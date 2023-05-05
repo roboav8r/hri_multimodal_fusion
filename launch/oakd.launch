@@ -1,0 +1,19 @@
+<launch>
+
+    <arg name="visualization" default="false" />
+    <arg name="config" default="oakd" />
+    <arg name="mode" default="train" /> <!-- options: train, inference -->
+    
+
+    <!-- Load parameters for configuration -->
+    <rosparam command="load" file="$(find hri_multimodal_fusion)/config/$(arg config).yaml" />
+
+    <!-- Launch sensors -->
+    <include file="$(find depthai_examples)/launch/yolov4_publisher.launch" />
+    <!-- Launch training or inference node, as appropriate -->
+    <node name="oakd_train_node" pkg="hri_multimodal_fusion" type="oakd_train_node" />
+
+    <!-- RViz visualization -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_multimodal_fusion)/rviz/$(arg config)_$(arg mode).rviz" if="$(arg visualization)"/>
+
+</launch>

@@ -1,0 +1,3 @@
+sensors:
+    oakd:
+        tf_prefix: "dai"
