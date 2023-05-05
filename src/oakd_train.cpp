@@ -42,6 +42,11 @@ class OakDTrainerNode
     PRIVATE MEMBERS
     */
 
+    // Constants
+    int detection_font_size_{1};
+    const int detection_font_weight_{1};
+    cv::Scalar color_ = CV_RGB(0,255,255);
+
     // Subscribers
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
@@ -57,7 +62,7 @@ class OakDTrainerNode
     void renderVisuals_()
     {
 
-        // Convert ROS message to CV matrix
+        // Convert RGB ROS message to CV matrix
         try
         {
             cv_ptr_bgr_ = cv_bridge::toCvCopy(last_img_, sensor_msgs::image_encodings::BGR8);
@@ -68,6 +73,13 @@ class OakDTrainerNode
             return;
         }
 
+        // Add bounding boxes and labels to detections
+        for (int ii=0 ; ii < last_detection_msg_.detections.size(); ii++)
+        {
+            cv::rectangle(cv_ptr_bgr_->image, cv::Point(last_detection_msg_.detections[ii].bbox.center.x + last_detection_msg_.detections[ii].bbox.size_x/2, last_detection_msg_.detections[ii].bbox.center.y + last_detection_msg_.detections[ii].bbox.size_y/2), cv::Point(last_detection_msg_.detections[ii].bbox.center.x - last_detection_msg_.detections[ii].bbox.size_x/2, last_detection_msg_.detections[ii].bbox.center.y - last_detection_msg_.detections[ii].bbox.size_y/2), color_, detection_font_weight_);
+            cv::putText(cv_ptr_bgr_->image, class_labels[((int)last_detection_msg_.detections[ii].results[0].id)] + " @ "+std::to_string(last_detection_msg_.detections[ii].position.x) + ","+ std::to_string(last_detection_msg_.detections[ii].position.y) + "," + std::to_string(last_detection_msg_.detections[ii].position.z), cv::Point(last_detection_msg_.detections[ii].bbox.center.x - last_detection_msg_.detections[ii].bbox.size_x/2, last_detection_msg_.detections[ii].bbox.center.y - last_detection_msg_.detections[ii].bbox.size_y/2 -10),cv::FONT_HERSHEY_PLAIN, detection_font_size_,color_, detection_font_weight_);
+        }
+        
         //cv_ptr_bgr_ = cv_bridge::toCvCopy(last_img_, sensor_msgs::image_encodings::BGR8);
         cv::imshow(OAKD_WINDOW, cv_ptr_bgr_->image);
         cv::waitKey(1);
