@@ -11,7 +11,7 @@
 #include "depthai_ros_msgs/SpatialDetectionArray.h"
 #include "depthai_ros_msgs/SpatialDetection.h"
 
-
+#include "hri_multimodal_fusion/LabelBagData.h"
 
 /*
 DEFINE CONSTANTS/INPUTS
@@ -53,6 +53,9 @@ class OakDTrainerNode
     image_transport::Subscriber image_sub_; 
     ros::Subscriber yolo_sub_;
 
+    // Services
+    ros::ServiceServer bag_and_label_srv_;
+
     // Private members to store incoming messages    
     depthai_ros_msgs::SpatialDetectionArray last_detection_msg_;
     sensor_msgs::Image last_img_;
@@ -85,24 +88,6 @@ class OakDTrainerNode
         cv::waitKey(1);
     }
 
-    public:
-    // Default Constructor
-    OakDTrainerNode() : it_(nh_)
-    {
-
-        // Subscribe to input video feed and publish output video feed
-        image_sub_ = it_.subscribe(image_topic, 10, &OakDTrainerNode::imageCallback, this);
-        yolo_sub_ = nh_.subscribe(detection_topic, 10, &OakDTrainerNode::yoloDetectionCallback, this);
-
-        cv::namedWindow(OAKD_WINDOW);
-    }
-
-    // Default Destructor
-    ~OakDTrainerNode()
-    {
-        cv::destroyWindow(OAKD_WINDOW);
-    }
-    
     void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     {
         last_img_ = (*msg);
@@ -115,7 +100,34 @@ class OakDTrainerNode
         renderVisuals_();
     }; // YOLO detection callback
 
+    static bool bagAndLabelData(hri_multimodal_fusion::LabelBagData::Request &req,
+                         hri_multimodal_fusion::LabelBagData::Response &resp)
+    {
+        ROS_INFO("Saving bag data file at filepath=%s\n", req.filepath.c_str());
+        return true;
+    }
 
+    public:
+    // Default Constructor
+    OakDTrainerNode() : it_(nh_)
+    {
+
+        // Subscribe to input video feed and publish output video feed
+        image_sub_ = it_.subscribe(image_topic, 10, &OakDTrainerNode::imageCallback, this);
+        yolo_sub_ = nh_.subscribe(detection_topic, 10, &OakDTrainerNode::yoloDetectionCallback, this);
+
+        // Start service to bag and label camera data
+        bag_and_label_srv_ = nh_.advertiseService("bag_and_label_oakd_data", bagAndLabelData);
+
+        cv::namedWindow(OAKD_WINDOW);
+    }
+
+    // Default Destructor
+    ~OakDTrainerNode()
+    {
+        cv::destroyWindow(OAKD_WINDOW);
+    }
+    
 };
 
 

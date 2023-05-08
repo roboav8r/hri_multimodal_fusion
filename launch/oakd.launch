@@ -11,7 +11,7 @@
     <!-- Launch sensors -->
     <include file="$(find depthai_examples)/launch/yolov4_publisher.launch" />
     <!-- Launch training or inference node, as appropriate -->
-    <node name="oakd_train_node" pkg="hri_multimodal_fusion" type="oakd_train_node" />
+    <node name="oakd_train_node" pkg="hri_multimodal_fusion" type="oakd_train_node" output="screen"/>
 
     <!-- RViz visualization -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_multimodal_fusion)/rviz/$(arg config)_$(arg mode).rviz" if="$(arg visualization)"/>
