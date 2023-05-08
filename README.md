@@ -30,7 +30,7 @@ make # TODO - fails here
 ## Calibration
 To calibrate the OAK-D sensor, send a command to run the bag and label service:
 ```
-rosservice call /bag_and_label_oakd_data "labels:
+rosservice call /bag_and_label_oakd_data "label_data:
   labels:
   - size: 1
     label: 'person'

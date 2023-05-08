@@ -1,4 +1,5 @@
 #include <sstream>
+#include <fstream>
 
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -40,8 +41,7 @@ std::string topics = detection_topic + " " + image_topic;
 bool bagAndLabelData(hri_multimodal_fusion::LabelBagData::Request &req,
                         hri_multimodal_fusion::LabelBagData::Response &resp)
 {
-    ROS_INFO("Saving bag data file at filepath=%s\n", req.filepath.c_str());
-
+    // Generate and send rosbag command
     std::stringstream bagCommand;
     bagCommand << "rosbag record -O ";
     bagCommand << package_path << "/" << req.filepath;
@@ -49,8 +49,24 @@ bool bagAndLabelData(hri_multimodal_fusion::LabelBagData::Request &req,
     bagCommand << topics;
 
     ROS_INFO("rosbag command: %s", bagCommand.str().c_str());
-
     std::system(bagCommand.str().c_str());
+
+    // Generate and save label file associated with rosbag
+    std::ofstream labelFile;
+    labelFile.open(package_path + "/" + req.filepath + ".yaml");
+
+    // Write label data to file
+    for (auto& label : req.label_data.labels)
+    {
+        // TODO - format this to make it easier to put into graph form
+        labelFile << label.label << std::endl;
+        labelFile << label.activity << std::endl;
+        labelFile << label.size << std::endl;
+        labelFile << std::endl;
+    }
+
+    labelFile.close();
+
     return true;
 }
 
