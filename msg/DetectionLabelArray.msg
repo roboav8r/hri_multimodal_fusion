@@ -1,0 +1,1 @@
+hri_multimodal_fusion/DetectionLabel[]  labels

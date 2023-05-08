@@ -22,10 +22,10 @@ include_directories(
 )
 
 ## Declare ROS messages and services
-# add_message_files(
-#     DIRECTORY msg 
-#     FILES SpatialFeature.msg SpatialFeatureArray.msg
-# )
+add_message_files(
+    DIRECTORY msg 
+    FILES DetectionLabel.msg DetectionLabelArray.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
