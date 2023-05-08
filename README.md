@@ -28,8 +28,23 @@ make # TODO - fails here
 # Usage
 
 ## Calibration
+To calibrate the OAK-D sensor, send a command to run the bag and label service:
+```
+rosservice call /bag_and_label_oakd_data "labels:
+  labels:
+  - size: 1
+    label: 'person'
+    activity: 'sitting'
+filepath: 'data/test'
+duration_sec: 10" 
+```
+
 
 ### Converting rosbags to .csvs 
 ```
 rostopic echo -b src/hri_multimodal_fusion/data/2023-04-26-14-49-44.orig.bag -p /tf > tf.csv
 ```
+
+# Additional Resources and References
+https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
+https://gtsam-jlblanco-docs.readthedocs.io/en/latest/Overview.html

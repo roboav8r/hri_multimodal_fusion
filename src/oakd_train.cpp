@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
@@ -6,7 +8,7 @@
 #include <Eigen/Dense>
 
 #include "ros/ros.h"
-#include "std_msgs/String.h"
+#include "rosbag/bag.h"
 
 #include "depthai_ros_msgs/SpatialDetectionArray.h"
 #include "depthai_ros_msgs/SpatialDetection.h"
@@ -31,6 +33,26 @@ const std::vector<std::string> class_labels = {
 std::string detection_topic{"yolov4_publisher/color/yolov4_Spatial_detections"};
 std::string image_topic{"yolov4_publisher/color/image"};
 static const std::string OAKD_WINDOW = "OAK-D Detections";
+
+std::string package_path = ros::package::getPath("hri_multimodal_fusion");
+std::string topics = detection_topic + " " + image_topic;
+
+bool bagAndLabelData(hri_multimodal_fusion::LabelBagData::Request &req,
+                        hri_multimodal_fusion::LabelBagData::Response &resp)
+{
+    ROS_INFO("Saving bag data file at filepath=%s\n", req.filepath.c_str());
+
+    std::stringstream bagCommand;
+    bagCommand << "rosbag record -O ";
+    bagCommand << package_path << "/" << req.filepath;
+    bagCommand << " --duration=" << (uint)req.duration_sec << "s ";
+    bagCommand << topics;
+
+    ROS_INFO("rosbag command: %s", bagCommand.str().c_str());
+
+    std::system(bagCommand.str().c_str());
+    return true;
+}
 
 /*
 DEFINE OAK-D TRAINER CLASS
@@ -99,13 +121,6 @@ class OakDTrainerNode
         last_detection_msg_ = (*msg);
         renderVisuals_();
     }; // YOLO detection callback
-
-    static bool bagAndLabelData(hri_multimodal_fusion::LabelBagData::Request &req,
-                         hri_multimodal_fusion::LabelBagData::Response &resp)
-    {
-        ROS_INFO("Saving bag data file at filepath=%s\n", req.filepath.c_str());
-        return true;
-    }
 
     public:
     // Default Constructor

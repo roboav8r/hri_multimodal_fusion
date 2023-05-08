@@ -1,4 +1,4 @@
 hri_multimodal_fusion/DetectionLabelArray   labels
 string                                      filepath
-float32                                     duration
+uint8                                       duration_sec
 ---
