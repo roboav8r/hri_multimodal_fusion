@@ -21,18 +21,17 @@ include_directories(
     include
 )
 
-## Declare ROS messages and services
+# Declare ROS messages and services
 add_message_files(
     DIRECTORY msg 
     FILES DetectionLabel.msg DetectionLabelArray.msg
 )
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+# Generate services in the 'srv' folder
+add_service_files(
+  DIRECTORY srv
+  FILES LabelBagData.srv
+)
 
 
 ## Generate added messages and services
