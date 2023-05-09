@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
     message_generation
     cv_bridge 
     image_transport
+    rosbag
 )
 
 find_package(GTSAM REQUIRED)
