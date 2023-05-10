@@ -3,6 +3,7 @@
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/geometry/Pose3.h>
@@ -61,19 +62,20 @@ int main() {
     gtsam::Values initial;
 
     // Initial object pose estimate
-    gtsam::Rot3 priorOrientation;
-    gtsam::Point3 priorPosition(0.0, 0.0, 0.0);
-    gtsam::Pose3 priorPose(priorOrientation, priorPosition);
-    Eigen::Matrix<double,4,4> priorCov;
+    gtsam::Rot3 priorOrientation = gtsam::Rot3::Identity();
+    // gtsam::Point3 priorPosition(0.0, 0.0, 0.0);
+    // gtsam::Pose3 priorPose(priorOrientation, priorPosition);
+    // Eigen::Matrix<double,4,4> priorCov;
     // TODO make this multiagent for the number of objects in label
 
     // OAK-D Sensor noise model
-    gtsam::noiseModel::Diagonal::shared_ptr oakdPosNoise = 
-        gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01,0.01,0.1));
+    auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.1));
 
     // Motion model / odometry factor between successive poses
-    gtsam::Pose3 motionModel;
-    Eigen::Matrix<double,4,4> motionNoise;
+    gtsam::Rot3 fixedOrientation = gtsam::Rot3::Identity();
+    gtsam::Point3 fixedPosition(0., 0., 0.);
+    gtsam::Pose3 fixedMotionModel(fixedOrientation,fixedPosition);
+    auto fixedMotionNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
 
     // Read bag file
     rosbag::Bag bag;
@@ -98,17 +100,18 @@ int main() {
         // Add sensor measurements as factors
         graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
 
-        // Add state estimates as variables, using measurement as initial value
-        initial.insert(state_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
-
         // Add motion model as factors
         if (ii==1) { // if this is the first node, add a prior factor
             //graph.add(gtsam::PriorFactor<gtsam::Pose3>(1,priorPose,priorCov));
         } 
         else // add a motion factor
         {
-            graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_state_symbol,state_symbol,motionModel));
+            //graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_state_symbol,state_symbol,fixedMotionModel,fixedMotionNoise));
+            graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_state_symbol,state_symbol,fixedMotionModel,fixedMotionNoise);
         }
+
+        // Add state estimates as variables, use measurement as initial value
+        initial.insert(state_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
@@ -119,6 +122,7 @@ int main() {
     bag.close();
 
     // Optimize graph
+    graph.print("Graph: \n");
     gtsam::Values final = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
     // save factor graph as graphviz dot file
@@ -127,7 +131,9 @@ int main() {
     graph.saveGraph("oakd_cal.dot",final);
 
     // Also print out to console
+    initial.print("Initial result:\n");
     final.print("Final result:\n");
+
 
 
     return 0;
