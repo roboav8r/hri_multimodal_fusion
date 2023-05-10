@@ -1,0 +1,32 @@
+graph {
+  size="5,5";
+
+  var8646911284551352321[label="x1", pos="0.000688416,0.000503353!"];
+  var8646911284551352322[label="x2", pos="0.000369945,0!"];
+  var8646911284551352323[label="x3", pos="0.00172278,0.000991203!"];
+  var8646911284551352324[label="x4", pos="0,0.000561743!"];
+  var8646911284551352325[label="x5", pos="0.0252212,0.0487487!"];
+
+  factor0[label="", shape=point];
+  var8646911284551352321--factor0;
+  factor1[label="", shape=point];
+  var8646911284551352322--factor1;
+  factor2[label="", shape=point];
+  var8646911284551352321--factor2;
+  var8646911284551352322--factor2;
+  factor3[label="", shape=point];
+  var8646911284551352323--factor3;
+  factor4[label="", shape=point];
+  var8646911284551352322--factor4;
+  var8646911284551352323--factor4;
+  factor5[label="", shape=point];
+  var8646911284551352324--factor5;
+  factor6[label="", shape=point];
+  var8646911284551352323--factor6;
+  var8646911284551352324--factor6;
+  factor7[label="", shape=point];
+  var8646911284551352325--factor7;
+  factor8[label="", shape=point];
+  var8646911284551352324--factor8;
+  var8646911284551352325--factor8;
+}
