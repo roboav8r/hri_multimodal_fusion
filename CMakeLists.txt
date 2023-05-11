@@ -22,6 +22,11 @@ if(NOT GTSAM_INCLUDE_DIRS)
   set(GTSAM_INCLUDE_DIRS ${GTSAM_INCLUDE_DIR})
 endif()
 
+find_package(GTSAM_UNSTABLE REQUIRED)
+if(NOT GTSAM_UNSTABLE_INCLUDE_DIRS)
+  set(GTSAM_UNSTABLE_INCLUDE_DIRS ${GTSAM_UNSTABLE_INCLUDE_DIR})
+endif()
+
 include_directories(
     ${catkin_INCLUDE_DIRS} 
     include
@@ -50,7 +55,7 @@ generate_messages(
 ## Declare a catkin package
 catkin_package(
     CATKIN_DEPENDS message_runtime
-    DEPENDS GTSAM
+    DEPENDS GTSAM GTSAM_UNSTABLE
 )
 
 
@@ -64,9 +69,10 @@ target_include_directories(oakd_cal_graph
     include
     ${catkin_INCLUDE_DIRS}
     ${GTSAM_INCLUDE_DIRS}
+    ${GTSAM_UNSTABLE_INCLUDE_DIRS}
 )
-target_link_libraries(oakd_cal_graph gtsam ${catkin_LIBRARIES})
-add_dependencies(oakd_cal_graph gtsam)
+target_link_libraries(oakd_cal_graph gtsam gtsam_unstable ${catkin_LIBRARIES})
+add_dependencies(oakd_cal_graph gtsam gtsam_unstable)
 
 add_executable(oakd_inference_graph src/oakd_inference_graph.cpp)
 target_include_directories(oakd_inference_graph
@@ -74,9 +80,10 @@ target_include_directories(oakd_inference_graph
     include
     ${catkin_INCLUDE_DIRS}
     ${GTSAM_INCLUDE_DIRS}
+    ${GTSAM_UNSTABLE_INCLUDE_DIRS}
 )
-target_link_libraries(oakd_inference_graph gtsam ${catkin_LIBRARIES})
-add_dependencies(oakd_inference_graph gtsam)
+target_link_libraries(oakd_inference_graph gtsam gtsam_unstable ${catkin_LIBRARIES})
+add_dependencies(oakd_inference_graph gtsam gtsam_unstable)
 
 add_executable(oakd_train_node src/oakd_train.cpp)
 target_link_libraries(oakd_train_node ${catkin_LIBRARIES})

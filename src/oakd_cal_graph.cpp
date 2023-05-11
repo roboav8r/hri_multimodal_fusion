@@ -12,6 +12,8 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/GaussianFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam_unstable/dynamics/PoseRTV.h>
+#include <gtsam_unstable/dynamics/VelocityConstraint.h>
 
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
@@ -48,6 +50,11 @@ int main() {
     gtsam::Pose3 fixedMotionModel(fixedOrientation,fixedPosition);
     auto fixedMotionNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
 
+    // Velocity model
+    gtsam::Vector3 velVel(0.,0.,0.);
+    gtsam::PoseRTV priorVelocity(fixedOrientation,fixedPosition,velVel);
+    auto velocityNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
+
     // Read bag file
     rosbag::Bag bag;
     bag.open(package_path + bag_filepath, rosbag::bagmode::Read);
@@ -56,37 +63,53 @@ int main() {
 
     // Iterate through bagfile messages
     int n_meas = 5; // TODO replace n_meas with size of view 
-    gtsam::Symbol last_state_symbol, state_symbol, meas_symbol;
+    gtsam::Symbol last_pose_symbol, pose_symbol, meas_symbol, vel_symbol, last_vel_symbol;
+    ros::Time t, last_t;
+    ros::Duration dt;
     for(unsigned short ii=1; rosbag::MessageInstance const m : view)
     {
         // Get message data
         depthai_ros_msgs::SpatialDetectionArray::ConstPtr det = m.instantiate<depthai_ros_msgs::SpatialDetectionArray>();
         std::cout << *det << std::endl;
-        std::cout << det->header.stamp << std::endl;
+        t = det->header.stamp;
+        std::cout << t << std::endl;
 
-        // Create symbols for measurements and position
-        state_symbol = gtsam::Symbol('x',ii);
+        // Create symbols for measurements, position, and velocity
+        pose_symbol = gtsam::Symbol('x',ii);
+        vel_symbol = gtsam::Symbol('v',ii);
         meas_symbol = gtsam::Symbol('z',ii);
-        
-        // Add sensor measurements as factors
-        graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+
+        // Add sensor measurements as update factors
+        graph.emplace_shared<OakDInferenceFactor>(pose_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+
+        // Add state estimates as variables, use measurement as initial value
+        initial.insert(pose_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
+
+        // Add velocity variable at this timestep
+        initial.insert(vel_symbol,priorVelocity);
 
         // Add motion model as factors
         if (ii==1) { // if this is the first node, add a prior factor
             //graph.add(gtsam::PriorFactor<gtsam::Pose3>(1,priorPose,priorCov));
         } 
-        else // add a motion factor
+        else 
         {
-            //graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_state_symbol,state_symbol,fixedMotionModel,fixedMotionNoise));
-            graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_state_symbol,state_symbol,fixedMotionModel,fixedMotionNoise);
-        }
+            // Add position prediction factor / state transition
+            //graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_pose_symbol,pose_symbol,fixedMotionModel,fixedMotionNoise));
+            graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_pose_symbol,pose_symbol,fixedMotionModel,fixedMotionNoise);
 
-        // Add state estimates as variables, use measurement as initial value
-        initial.insert(state_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
+            // Add velocity prediction factor / constraint
+            dt = t - last_t;
+            graph.emplace_shared<gtsam::VelocityConstraint>(last_vel_symbol,vel_symbol,dt.toSec(),velocityNoise);
+
+        }
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
-        last_state_symbol = state_symbol;
+        last_pose_symbol = pose_symbol;
+        last_vel_symbol = vel_symbol;
+        last_t = t;
+
         if (ii>n_meas) {break;}
     }
 
@@ -94,12 +117,13 @@ int main() {
 
     // Optimize graph
     graph.print("Graph: \n");
+    graph.saveGraph("oakd_cal_init.dot",initial);
     gtsam::Values final = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
     // save factor graph as graphviz dot file
     // Render to PDF using "fdp Pose2SLAMExample.dot -Tpdf > graph.pdf"
-    std::ofstream os("oakd_cal.dot");
-    graph.saveGraph("oakd_cal.dot",final);
+    //std::ofstream os("oakd_cal.dot");
+    graph.saveGraph("oakd_cal_final.dot",final);
 
     // Also print out to console
     initial.print("Initial result:\n");
