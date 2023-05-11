@@ -53,7 +53,7 @@ int main() {
     // Velocity model
     gtsam::Vector3 velVel(0.,0.,0.);
     gtsam::PoseRTV priorVelocity(fixedOrientation,fixedPosition,velVel);
-    auto velocityNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
+    auto velocityNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001));
 
     // Read bag file
     rosbag::Bag bag;
@@ -82,12 +82,6 @@ int main() {
         // Add sensor measurements as update factors
         graph.emplace_shared<OakDInferenceFactor>(pose_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
 
-        // Add state estimates as variables, use measurement as initial value
-        initial.insert(pose_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
-
-        // Add velocity variable at this timestep
-        initial.insert(vel_symbol,priorVelocity);
-
         // Add motion model as factors
         if (ii==1) { // if this is the first node, add a prior factor
             //graph.add(gtsam::PriorFactor<gtsam::Pose3>(1,priorPose,priorCov));
@@ -100,9 +94,17 @@ int main() {
 
             // Add velocity prediction factor / constraint
             dt = t - last_t;
-            graph.emplace_shared<gtsam::VelocityConstraint>(last_vel_symbol,vel_symbol,dt.toSec(),velocityNoise);
+            graph.emplace_shared<gtsam::VelocityConstraint>(last_vel_symbol,vel_symbol,dt.toSec());
+            //graph.add(gtsam::VelocityConstraint(last_vel_symbol,vel_symbol,))
 
         }
+
+        // Add state estimates as variables, use measurement as initial value
+        initial.insert(pose_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
+
+        // Add velocity variable at this timestep
+        initial.insert(vel_symbol,priorVelocity);
+
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
