@@ -26,6 +26,7 @@ std::string bag_filepath{"/data/test.bag"}; // TODO get as input arg
 std::vector<std::string> topics;
 
 
+
 int main() {
 
     // Create graph and values to optimize

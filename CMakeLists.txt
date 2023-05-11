@@ -68,6 +68,16 @@ target_include_directories(oakd_cal_graph
 target_link_libraries(oakd_cal_graph gtsam ${catkin_LIBRARIES})
 add_dependencies(oakd_cal_graph gtsam)
 
+add_executable(oakd_inference_graph src/oakd_inference_graph.cpp)
+target_include_directories(oakd_inference_graph
+  PRIVATE
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${GTSAM_INCLUDE_DIRS}
+)
+target_link_libraries(oakd_inference_graph gtsam ${catkin_LIBRARIES})
+add_dependencies(oakd_inference_graph gtsam)
+
 add_executable(oakd_train_node src/oakd_train.cpp)
 target_link_libraries(oakd_train_node ${catkin_LIBRARIES})
 add_dependencies(oakd_train_node hri_multimodal_fusion_generate_messages_cpp)
