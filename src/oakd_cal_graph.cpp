@@ -30,30 +30,28 @@ std::vector<std::string> topics;
 
 int main() {
 
-    // Create graph and values to optimize
+    // Bagfile variables and parameters
+    ros::Time t, last_t;
+    ros::Duration dt;
+    int n_meas = 5; // TODO replace n_meas with size of view 
+    
+    // Graph variables and parameters
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;
-
-    // Initial object pose estimate
-    gtsam::Rot3 priorOrientation = gtsam::Rot3::Identity();
-    // gtsam::Point3 priorPosition(0.0, 0.0, 0.0);
-    // gtsam::Pose3 priorPose(priorOrientation, priorPosition);
-    // Eigen::Matrix<double,4,4> priorCov;
-    // TODO make this multiagent for the number of objects in label
+    gtsam::Symbol last_pose_symbol, pose_symbol, last_posevel_symbol, posevel_symbol, meas_symbol;
 
     // OAK-D Sensor noise model
     auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.1));
 
-    // Motion model / odometry factor between successive poses
-    gtsam::Rot3 fixedOrientation = gtsam::Rot3::Identity();
-    gtsam::Point3 fixedPosition(0., 0., 0.);
-    gtsam::Pose3 fixedMotionModel(fixedOrientation,fixedPosition);
-    auto fixedMotionNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
-
-    // Velocity model
-    gtsam::Vector3 velVel(0.,0.,0.);
-    gtsam::PoseRTV priorVelocity(fixedOrientation,fixedPosition,velVel);
-    auto velocityNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001));
+    // Object position/orientation/velocity variable
+    gtsam::Rot3 rot = gtsam::Rot3::Identity();
+    gtsam::Point3 pos(0., 0., 0.);
+    gtsam::Pose3 pose(rot,pos);
+    gtsam::Velocity3 vel(0.,0.,0.);
+    gtsam::PoseRTV poseWithVel(pose,vel);
+    auto poseNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
+    auto poseRtvNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector9(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
+    auto velNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01,0.01,0.01));
 
     // Read bag file
     rosbag::Bag bag;
@@ -62,10 +60,6 @@ int main() {
     rosbag::View view(bag, rosbag::TopicQuery(topics)); // TODO replace this with rosbag::View(bag) to get all topics
 
     // Iterate through bagfile messages
-    int n_meas = 5; // TODO replace n_meas with size of view 
-    gtsam::Symbol last_pose_symbol, pose_symbol, meas_symbol, vel_symbol, last_vel_symbol;
-    ros::Time t, last_t;
-    ros::Duration dt;
     for(unsigned short ii=1; rosbag::MessageInstance const m : view)
     {
         // Get message data
@@ -75,12 +69,14 @@ int main() {
         std::cout << t << std::endl;
 
         // Create symbols for measurements, position, and velocity
-        pose_symbol = gtsam::Symbol('x',ii);
-        vel_symbol = gtsam::Symbol('v',ii);
+        //pose_symbol = gtsam::Symbol('p',ii);
+        posevel_symbol = gtsam::Symbol('v',ii);
         meas_symbol = gtsam::Symbol('z',ii);
 
         // Add sensor measurements as update factors
-        graph.emplace_shared<OakDInferenceFactor>(pose_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        //graph.emplace_shared<OakDInferenceFactor>(pose_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        graph.emplace_shared<OakDInferenceFactorRTV>(posevel_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+
 
         // Add motion model as factors
         if (ii==1) { // if this is the first node, add a prior factor
@@ -88,28 +84,26 @@ int main() {
         } 
         else 
         {
-            // Add position prediction factor / state transition
+            // Add state transition factors
             //graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_pose_symbol,pose_symbol,fixedMotionModel,fixedMotionNoise));
-            graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_pose_symbol,pose_symbol,fixedMotionModel,fixedMotionNoise);
+            //graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_pose_symbol,pose_symbol,pose,poseNoise);
 
             // Add velocity prediction factor / constraint
             dt = t - last_t;
-            graph.emplace_shared<gtsam::VelocityConstraint>(last_vel_symbol,vel_symbol,dt.toSec());
-            //graph.add(gtsam::VelocityConstraint(last_vel_symbol,vel_symbol,))
+            //graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec(),velNoise);
+            graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec(),velNoise);
 
         }
 
-        // Add state estimates as variables, use measurement as initial value
-        initial.insert(pose_symbol,gtsam::Pose3(priorOrientation,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
-
-        // Add velocity variable at this timestep
-        initial.insert(vel_symbol,priorVelocity);
+        // Add state estimates as variables, use OAK-D measurement as initial position value
+        //initial.insert(pose_symbol,gtsam::Pose3(rot,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
+        initial.insert(posevel_symbol,gtsam::PoseRTV(gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z),rot,vel));
 
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
-        last_pose_symbol = pose_symbol;
-        last_vel_symbol = vel_symbol;
+        //last_pose_symbol = pose_symbol;
+        last_posevel_symbol = posevel_symbol;
         last_t = t;
 
         if (ii>n_meas) {break;}
@@ -124,14 +118,15 @@ int main() {
 
     // save factor graph as graphviz dot file
     // Render to PDF using "fdp Pose2SLAMExample.dot -Tpdf > graph.pdf"
-    //std::ofstream os("oakd_cal.dot");
     graph.saveGraph("oakd_cal_final.dot",final);
 
     // Also print out to console
     initial.print("Initial result:\n");
     final.print("Final result:\n");
 
-
+    // Print error to console
+    std::cout << "Initial error: " << graph.error(initial) << std::endl;
+    std::cout << "Final error: " << graph.error(final) << std::endl;
 
     return 0;
 }
