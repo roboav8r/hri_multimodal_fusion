@@ -38,10 +38,11 @@ int main() {
     // Graph variables and parameters
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;
-    gtsam::Symbol last_pose_symbol, pose_symbol, last_posevel_symbol, posevel_symbol, meas_symbol;
+    gtsam::Symbol last_pos_symbol, pos_symbol, meas_symbol; // last_posevel_symbol, posevel_symbol,
+    gtsam::Symbol last_vel_symbol, vel_symbol;
 
     // OAK-D Sensor noise model
-    auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.1));
+    auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.25));
 
     // Object position/orientation/velocity variable
     gtsam::Rot3 rot = gtsam::Rot3::Identity();
@@ -49,9 +50,10 @@ int main() {
     gtsam::Pose3 pose(rot,pos);
     gtsam::Velocity3 vel(0.,0.,0.);
     gtsam::PoseRTV poseWithVel(pose,vel);
+    auto posNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.0001,0.0001,0.0001));
+    auto velNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01,0.01,0.01));
     auto poseNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
     auto poseRtvNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector9(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
-    auto velNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01,0.01,0.01));
 
     // Read bag file
     rosbag::Bag bag;
@@ -69,13 +71,13 @@ int main() {
         std::cout << t << std::endl;
 
         // Create symbols for measurements, position, and velocity
-        //pose_symbol = gtsam::Symbol('p',ii);
-        posevel_symbol = gtsam::Symbol('v',ii);
+        pos_symbol = gtsam::Symbol('p',ii);
+        vel_symbol = gtsam::Symbol('v',ii);
         meas_symbol = gtsam::Symbol('z',ii);
 
         // Add sensor measurements as update factors
-        //graph.emplace_shared<OakDInferenceFactor>(pose_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
-        graph.emplace_shared<OakDInferenceFactorRTV>(posevel_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        graph.emplace_shared<OakDInferenceFactor>(pos_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        //graph.emplace_shared<OakDInferenceFactorRTV>(posevel_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
 
 
         // Add motion model as factors
@@ -87,23 +89,24 @@ int main() {
             // Add state transition factors
             //graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_pose_symbol,pose_symbol,fixedMotionModel,fixedMotionNoise));
             //graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_pose_symbol,pose_symbol,pose,poseNoise);
+            graph.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(last_pos_symbol,pos_symbol,pos,posNoise);
 
             // Add velocity prediction factor / constraint
             dt = t - last_t;
             //graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec(),velNoise);
-            graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec(),velNoise);
+            //graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec()); // hard constraint
 
         }
 
         // Add state estimates as variables, use OAK-D measurement as initial position value
-        //initial.insert(pose_symbol,gtsam::Pose3(rot,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z)));
-        initial.insert(posevel_symbol,gtsam::PoseRTV(gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z),rot,vel));
+        initial.insert(pos_symbol,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z));
+        initial.insert(vel_symbol,vel);
 
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
-        //last_pose_symbol = pose_symbol;
-        last_posevel_symbol = posevel_symbol;
+        last_pos_symbol = pos_symbol;
+        //last_posevel_symbol = posevel_symbol;
         last_t = t;
 
         if (ii>n_meas) {break;}
