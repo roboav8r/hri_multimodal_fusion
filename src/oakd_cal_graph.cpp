@@ -40,6 +40,7 @@ int main() {
     gtsam::Values initial;
     gtsam::Symbol last_pos_symbol, pos_symbol, meas_symbol; // last_posevel_symbol, posevel_symbol,
     gtsam::Symbol last_vel_symbol, vel_symbol;
+    gtsam::Symbol last_rtv_symbol, rtv_symbol;
 
     // OAK-D Sensor noise model
     auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.25));
@@ -49,11 +50,11 @@ int main() {
     gtsam::Point3 pos(0., 0., 0.);
     gtsam::Pose3 pose(rot,pos);
     gtsam::Velocity3 vel(0.,0.,0.);
-    gtsam::PoseRTV poseWithVel(pose,vel);
+    gtsam::PoseRTV rtv(pose,vel);
     auto posNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.0001,0.0001,0.0001));
-    auto velNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01,0.01,0.01));
+    auto velNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.001,0.001,0.001));
     auto poseNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
-    auto poseRtvNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector9(0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001,0.00001));
+    auto rtvNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector9(0.0001,0.0001,0.0001,0.,0.,0.,0.,0.,0.));
 
     // Read bag file
     rosbag::Bag bag;
@@ -73,11 +74,12 @@ int main() {
         // Create symbols for measurements, position, and velocity
         pos_symbol = gtsam::Symbol('p',ii);
         vel_symbol = gtsam::Symbol('v',ii);
+        rtv_symbol = gtsam::Symbol('r',ii);
         meas_symbol = gtsam::Symbol('z',ii);
 
         // Add sensor measurements as update factors
         graph.emplace_shared<OakDInferenceFactor>(pos_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
-        //graph.emplace_shared<OakDInferenceFactorRTV>(posevel_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        graph.emplace_shared<OakDInferenceFactorRTV>(rtv_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
 
 
         // Add motion model as factors
@@ -90,22 +92,25 @@ int main() {
             //graph.add(gtsam::BetweenFactor<gtsam::Pose3>(last_pose_symbol,pose_symbol,fixedMotionModel,fixedMotionNoise));
             //graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(last_pose_symbol,pose_symbol,pose,poseNoise);
             graph.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(last_pos_symbol,pos_symbol,pos,posNoise);
+            //graph.emplace_shared<gtsam::BetweenFactor<gtsam::PoseRTV>>(last_rtv_symbol,rtv_symbol,rtv,rtvNoise);
 
             // Add velocity prediction factor / constraint
             dt = t - last_t;
-            //graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec(),velNoise);
-            //graph.emplace_shared<gtsam::VelocityConstraint>(last_posevel_symbol,posevel_symbol,dt.toSec()); // hard constraint
+            //graph.emplace_shared<gtsam::VelocityConstraint>(last_rtv_symbol,rtv_symbol,dt.toSec(),rtvNoise);
+            graph.emplace_shared<StateTransition>(last_rtv_symbol,rtv_symbol,dt.toSec(),velNoise); // hard constraint
 
         }
 
         // Add state estimates as variables, use OAK-D measurement as initial position value
         initial.insert(pos_symbol,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z));
-        initial.insert(vel_symbol,vel);
+        initial.insert(rtv_symbol,gtsam::PoseRTV(gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z),rot,vel));
+        //initial.insert(vel_symbol,vel);
 
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
         last_pos_symbol = pos_symbol;
+        last_rtv_symbol = rtv_symbol;
         //last_posevel_symbol = posevel_symbol;
         last_t = t;
 
