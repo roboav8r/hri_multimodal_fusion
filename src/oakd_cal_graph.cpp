@@ -36,18 +36,14 @@ int main() {
     // Graph variables and parameters
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;
-    gtsam::Symbol last_pos_symbol, pos_symbol, meas_symbol; // last_posevel_symbol, posevel_symbol,
-    gtsam::Symbol last_vel_symbol, vel_symbol;
+    gtsam::Symbol last_state_symbol, state_symbol, meas_symbol; // last_posevel_symbol, posevel_symbol,
 
     // OAK-D Sensor noise model
     auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.25));
 
-    // Object position/orientation/velocity variable
-    gtsam::Rot3 rot = gtsam::Rot3::Identity();
-    gtsam::Point3 pos(0., 0., 0.);
-    gtsam::Velocity3 vel(0.,0.,0.);
-    auto posNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.0001,0.0001,0.0001));
-    auto velNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.001,0.001,0.001));
+    // State variables
+    gtsam::Vector3 state(0., 0., 0.);
+    auto stateNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.0001,0.0001,0.0001));
 
     // Read bag file
     rosbag::Bag bag;
@@ -65,12 +61,12 @@ int main() {
         std::cout << t << std::endl;
 
         // Create symbols for measurements, position, and velocity
-        pos_symbol = gtsam::Symbol('p',ii);
-        vel_symbol = gtsam::Symbol('v',ii);
+        state_symbol = gtsam::Symbol('x',ii);
+        // vel_symbol = gtsam::Symbol('v',ii);
         meas_symbol = gtsam::Symbol('z',ii);
 
         // Add sensor measurements as update factors
-        graph.emplace_shared<OakDInferenceFactor>(pos_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
 
         // Add motion model as factors
         if (ii==1) { // if this is the first node
@@ -80,16 +76,16 @@ int main() {
         {
             // Add state transition factor
             dt = t - last_t;
-            graph.emplace_shared<StateTransition>(last_pos_symbol,pos_symbol,dt.toSec(),posNoise); 
+            graph.emplace_shared<StateTransition>(last_state_symbol,state_symbol,dt.toSec(),stateNoise); 
 
         }
 
         // Add state estimates as variables, use OAK-D measurement as initial position value
-        initial.insert(pos_symbol,gtsam::Point3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z));
+        initial.insert(state_symbol,gtsam::Vector3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z));
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
-        last_pos_symbol = pos_symbol;
+        last_state_symbol = state_symbol;
         last_t = t;
 
         if (ii>n_meas) {break;}
