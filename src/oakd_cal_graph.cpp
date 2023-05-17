@@ -39,11 +39,11 @@ int main() {
     gtsam::Symbol last_state_symbol, state_symbol, meas_symbol; // last_posevel_symbol, posevel_symbol,
 
     // OAK-D Sensor noise model
-    auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.1,0.1,0.25));
+    auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.1,0.1,0.25,0.1,0.1,0.1));
 
     // State variables
-    gtsam::Vector3 state(0., 0., 0.);
-    auto stateNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.0001,0.0001,0.0001));
+    gtsam::Vector6 state(0., 0., 0., 0., 0., 0.);
+    auto stateNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.0001,0.0001,0.0001,0.0001,0.0001,0.0001));
 
     // Read bag file
     rosbag::Bag bag;
@@ -62,11 +62,10 @@ int main() {
 
         // Create symbols for measurements, position, and velocity
         state_symbol = gtsam::Symbol('x',ii);
-        // vel_symbol = gtsam::Symbol('v',ii);
         meas_symbol = gtsam::Symbol('z',ii);
 
         // Add sensor measurements as update factors
-        graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z, oakdPosNoise);
+        graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z,oakdPosNoise);
 
         // Add motion model as factors
         if (ii==1) { // if this is the first node
@@ -81,7 +80,7 @@ int main() {
         }
 
         // Add state estimates as variables, use OAK-D measurement as initial position value
-        initial.insert(state_symbol,gtsam::Vector3(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z));
+        initial.insert(state_symbol,gtsam::Vector6(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z,0,0,0));
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
