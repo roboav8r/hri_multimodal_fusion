@@ -81,14 +81,17 @@ public:
 };
 
 
+
+
+
+
+
 /** controls which model to use for numerical integration to use for constraints */
 typedef enum {
   TRAPEZOIDAL, // Constant acceleration
   EULER_START, // Constant velocity, using starting velocity
   EULER_END    // Constant velocity, using ending velocity
 } IntegrationMode;
-
-
 
 /**
  * Constraint to enforce dynamics between the velocities and poses, using
@@ -189,3 +192,29 @@ private:
     return p2 - hx;
   }
 };
+
+// private:
+//   static gtsam::Vector evaluateError_(const gtsam::PoseRTV& x1, const gtsam::PoseRTV& x2,
+//       double dt, const IntegrationMode& mode) {
+
+//     const gtsam::Velocity3& v1 = x1.v(), v2 = x2.v();
+//     const gtsam::Point3& p1 = x1.t(), p2 = x2.t();
+//     gtsam::Point3 hx1(0,0,0), hx2(0,0,0);
+//     switch(mode) {
+//     case TRAPEZOIDAL: 
+//         hx1 = p1 + gtsam::Point3((v1 + v2) * dt *0.5);
+//         hx2 = gtsam::Velocity3(2*(p2-p1)/dt - v1); 
+//         break;
+//     case EULER_START: 
+//         hx1 = p1 + gtsam::Point3(v1 * dt);
+//         hx2 = gtsam::Velocity3((p2-p1)/dt - v1);
+//         break;
+//     case EULER_END  : 
+//         hx1 = p1 + gtsam::Point3(v2 * dt);
+//         hx2 = gtsam::Velocity3((p2-p1)/dt - v2);
+//         break;
+//     default: assert(false); break;
+//     }
+//     return (p2 - hx1,v2 - hx2);
+//   }
+// };

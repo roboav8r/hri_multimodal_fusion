@@ -97,7 +97,7 @@ int main() {
             // Add velocity prediction factor / constraint
             dt = t - last_t;
             //graph.emplace_shared<gtsam::VelocityConstraint>(last_rtv_symbol,rtv_symbol,dt.toSec(),rtvNoise);
-            graph.emplace_shared<StateTransition>(last_rtv_symbol,rtv_symbol,dt.toSec(),velNoise); // hard constraint
+            graph.emplace_shared<StateTransition>(last_rtv_symbol,rtv_symbol,dt.toSec(),posNoise); // hard constraint
 
         }
 
