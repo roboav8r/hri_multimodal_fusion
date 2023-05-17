@@ -43,7 +43,7 @@ int main() {
 
     // State variables
     gtsam::Vector6 state(0., 0., 0., 0., 0., 0.);
-    auto stateNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.0001,0.0001,0.0001,0.0001,0.0001,0.0001));
+    auto stateNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.01,0.01,0.01));
 
     // Read bag file
     rosbag::Bag bag;
