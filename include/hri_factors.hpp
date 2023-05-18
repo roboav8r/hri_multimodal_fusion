@@ -84,15 +84,6 @@ public:
 };
 
 
-
-
-/**
- * Constraint to enforce dynamics between the velocities and poses, using
- * a prediction based on a numerical integration flag.
- *
- * NOTE: this approximation is insufficient for large timesteps, but is accurate
- * if timesteps are small.
- */
 class StateTransition : public gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6> {
 
 protected:
@@ -136,6 +127,69 @@ public:
                                 2*T2(0) - 2*T1(0) - dt_*(T1(3)+T2(3)),
                                 2*T2(1) - 2*T1(1) - dt_*(T1(4)+T2(4)),
                                 2*T2(2) - 2*T1(2) - dt_*(T1(5)+T2(5))).finished();
+
+  }
+
+};
+
+
+class StateTransitionCalibration : public gtsam::NoiseModelFactor4<gtsam::Vector6,gtsam::Vector6,gtsam::Vector6,gtsam::Vector6> {
+
+protected:
+
+  double dt_;   /// time difference between frames in seconds
+
+public:
+
+  StateTransitionCalibration(gtsam::Key key1, gtsam::Key key2, gtsam::Key key3, gtsam::Key key4, double dt)
+  : gtsam::NoiseModelFactor4<gtsam::Vector6,gtsam::Vector6,gtsam::Vector6,gtsam::Vector6>(gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(1,1,1,1,1,1)), key1, key2, key3, key4), dt_(dt) {}
+
+  ~StateTransitionCalibration() override {}
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new StateTransitionCalibration(*this))); }
+
+  /**
+   * Calculates the error for trapezoidal model given
+   */
+  gtsam::Vector evaluateError(const gtsam::Vector6& X1, const gtsam::Vector6& X2, const gtsam::Vector6& Mean, const gtsam::Vector6& Var,
+      gtsam::OptionalMatrixType HX1, gtsam::OptionalMatrixType HX2, gtsam::OptionalMatrixType HMean, gtsam::OptionalMatrixType HVar) const override {
+
+    if (HX1) (*HX1) = (gtsam::Matrix(6,6) << -1./Var(0), 0., 0., 0., 0., 0., 
+                                            0., -1./Var(1), 0., 0., 0., 0.,
+                                            0., 0., -1./Var(2), 0., 0., 0.,
+                                            0., 0., 0., -0.5*dt_/Var(3), 0., 0.,
+                                            0., 0., 0., 0., -0.5*dt_/Var(4), 0.,
+                                            0., 0., 0., 0., 0., -0.5*dt_/Var(5)).finished();
+    if (HX2) (*HX2) = (gtsam::Matrix(6,6) << 1./Var(0), 0., 0., 0., 0., 0., 
+                                           0., 1./Var(1), 0., 0., 0., 0.,
+                                           0., 0., 1./Var(2), 0., 0., 0.,
+                                           0., 0., 0., -0.5*dt_/Var(3), 0., 0.,
+                                           0., 0., 0., 0., -0.5*dt_/Var(4), 0.,
+                                           0., 0., 0., 0., 0., -0.5*dt_/Var(5)).finished();
+
+    if (HMean) (*HMean) = (gtsam::Matrix(6,6) << -1., 0., 0., 0., 0., 0., 
+                                            0., -1., 0., 0., 0., 0.,
+                                            0., 0., -1., 0., 0., 0.,
+                                            0., 0., 0., -1, 0., 0.,
+                                            0., 0., 0., 0., -1, 0.,
+                                            0., 0., 0., 0., 0., -1).finished();
+
+    if (HVar) (*HVar) = (gtsam::Matrix(6,6) << 1., 0., 0., 0., 0., 0., 
+                                           0., 1., 0., 0., 0., 0.,
+                                           0., 0., 1., 0., 0., 0.,
+                                           0., 0., 0., -0.5*dt_, 0., 0.,
+                                           0., 0., 0., 0., -0.5*dt_, 0.,
+                                           0., 0., 0., 0., 0., -0.5*dt_).finished();
+
+    return (gtsam::Vector(6) << (X2(0) - (X1(0) + 0.5*dt_*(X1(3)+X2(3))) - Mean(0))/Var(0),
+                                (X2(1) - (X1(1) + 0.5*dt_*(X1(4)+X2(4))) - Mean(1))/Var(1), 
+                                (X2(2) - (X1(2) + 0.5*dt_*(X1(5)+X2(5))) - Mean(2))/Var(2),
+                                (2*X2(0) - 2*X1(0) - dt_*(X1(3)+X2(3)) - dt_*Mean(3))/Var(3),
+                                (2*X2(1) - 2*X1(1) - dt_*(X1(4)+X2(4)) - dt_*Mean(4))/Var(4),
+                                (2*X2(2) - 2*X1(2) - dt_*(X1(5)+X2(5)) - dt_*Mean(5))/Var(5)).finished();
 
   }
 
