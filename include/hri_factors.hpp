@@ -51,28 +51,28 @@ public:
     typedef std::shared_ptr<OakDCalibrationFactor> shared_ptr;
 
     OakDCalibrationFactor(gtsam::Key j, gtsam::Key k, double x, double y, double z):
-        gtsam::NoiseModelFactor2<gtsam::Vector6, gtsam::Vector3>(gtsam::noiseModel::Constrained::Sigmas(gtsam::Vector6(0,0,0,0,0,0)), j, k), mx_(x), my_(y), mz_(z) {}
+        gtsam::NoiseModelFactor2<gtsam::Vector6, gtsam::Vector3>(gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(1,1,1,0,0,0)), j, k), mx_(x), my_(y), mz_(z) {}
 
     ~OakDCalibrationFactor() override {}
 
     gtsam::Vector evaluateError (const gtsam::Vector6& X, const gtsam::Vector3& Sigma, gtsam::OptionalMatrixType H1, gtsam::OptionalMatrixType H2 ) const override
     {
-        if (H1) (*H1) = (gtsam::Matrix(6,6) << (X(0) - mx_)/pow(Sigma(0),2), 0, 0, 0, 0, 0, 
-                                             0, (X(1) - my_)/pow(Sigma(1),2), 0, 0, 0, 0,
-                                             0, 0, (X(2) - mz_)/pow(Sigma(2),2), 0, 0, 0,
+        if (H1) (*H1) = (gtsam::Matrix(6,6) << 1/Sigma(0), 0, 0, 0, 0, 0, 
+                                             0, 1/Sigma(1), 0, 0, 0, 0,
+                                             0, 0, 1/Sigma(2), 0, 0, 0,
                                              0, 0, 0, 0, 0, 0,
                                              0, 0, 0, 0, 0, 0,
                                              0, 0, 0, 0, 0, 0).finished(); // Oak-D should directly measure position in camera frame
-        if (H2) (*H2) = (gtsam::Matrix(6,3) << -pow((X(0) - mx_),2)/pow(Sigma(0),3), 0, 0,
-                                               0, -pow((X(1) - mx_),2)/pow(Sigma(1),3), 0,
-                                               0, 0, -pow((X(2) - mx_),2)/pow(Sigma(2),3),
+        if (H2) (*H2) = (gtsam::Matrix(6,3) << -(X(0) - mx_)/pow(Sigma(0),2), 0, 0,
+                                               0, -(X(1) - my_)/pow(Sigma(1),2), 0,
+                                               0, 0, -(X(2) - mz_)/pow(Sigma(2),2),
                                                0, 0, 0,
                                                0, 0, 0,
                                                0, 0, 0).finished(); 
 
-        return (gtsam::Vector(6) << 0.5*pow((X(0) - mx_),2)/pow(Sigma(0),2), 
-                                    0.5*pow((X(1) - my_),2)/pow(Sigma(1),2), 
-                                    0.5*pow((X(2) - mz_),2)/pow(Sigma(2),2),
+        return (gtsam::Vector(6) << (X(0) - mx_)/Sigma(0), 
+                                    (X(1) - my_)/Sigma(1), 
+                                    (X(2) - mz_)/Sigma(2),
                                     0,
                                     0,
                                     0).finished();

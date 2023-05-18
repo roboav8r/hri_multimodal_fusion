@@ -39,7 +39,9 @@ int main() {
     gtsam::Symbol last_state_symbol, state_symbol, sensor_noise_symbol;
 
     // OAK-D Sensor noise model
-    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.0893172531,0.0989624865,0.0999552784,0.,0.,0.));
+    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.629925485,0.447230736,1.0815742,0.,0.,0.)); //2,2,2,0,0,0
+    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.436474044,0.310445234,0.748855339,0.,0.,0.)); //sqrt(2),sqrt(2),sqrt(2),0,0,0
+    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.892055081,0.632714415,1.5323508,0.,0.,0.)); //1,1,1,0,0,0
     gtsam::Vector3 oakdPosNoise(0.1,0.1,0.1);
     sensor_noise_symbol = gtsam::Symbol('s',1);
 
@@ -66,7 +68,7 @@ int main() {
         state_symbol = gtsam::Symbol('x',ii);
 
         // Add sensor measurements as update factors
-        // graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z,oakdPosNoise);
+        //graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z,oakdPosNoise);
         graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
 
         // Add motion model as factors
