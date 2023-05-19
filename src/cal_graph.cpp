@@ -12,6 +12,8 @@
 #include <gtsam/linear/NoiseModel.h>
 #include <gtsam/linear/GaussianFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/PriorFactor.h>
+
 
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
@@ -38,16 +40,9 @@ int main() {
     gtsam::Values initial;
     gtsam::Symbol last_state_symbol, state_symbol, sensor_noise_symbol;
 
-    // OAK-D Sensor noise model
-    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.629925485,0.447230736,1.0815742,0.,0.,0.)); //2,2,2,0,0,0
-    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.436474044,0.310445234,0.748855339,0.,0.,0.)); //sqrt(2),sqrt(2),sqrt(2),0,0,0
-    //auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.892055081,0.632714415,1.5323508,0.,0.,0.)); //1,1,1,0,0,0
+    // Sensor noise models (variable to be optimized)
     gtsam::Vector3 oakdPosNoise(0.1,0.1,0.1);
     sensor_noise_symbol = gtsam::Symbol('s',1);
-
-    // State variables
-    gtsam::Vector6 stateMean(0., 0., 0.7, 0., 0., 0.);
-    auto stateNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.00001,0.00001,0.00001,0.01,0.01,0.01));
 
     // Read bag file
     rosbag::Bag bag;
@@ -64,22 +59,23 @@ int main() {
         t = det->header.stamp;
         std::cout << t << std::endl;
 
-        // Create symbols for measurements, position, and velocity
+        // Create symbols for state
         state_symbol = gtsam::Symbol('x',ii);
 
-        // Add sensor measurements as update factors
-        //graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z,oakdPosNoise);
-        graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
-
-        // Add motion model as factors
-        if (ii==1) { // if this is the first node
-            
+        if (ii==1) // if this is the first node, add a measurement factor
+        { 
+            graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
         } 
-        else 
+        else // For subsequent nodes
         {
-            // Add state transition factor
+            // Add state transition factor and measurement factor
             dt = t - last_t;
-            graph.emplace_shared<StateTransition>(last_state_symbol,state_symbol,dt.toSec(),stateMean,stateNoise); 
+            gtsam::SharedDiagonal Q = 
+                gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*dt.toSec(), 0.1*dt.toSec(), 0.1*dt.toSec()), true);
+            graph.emplace_shared<ConstVelStateTransition>(last_state_symbol,state_symbol,dt.toSec(),Q);
+
+            graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
+
 
         }
 
@@ -94,9 +90,9 @@ int main() {
         if (ii>n_meas) {break;}
     }
 
-    bag.close();
-
     initial.insert(sensor_noise_symbol,oakdPosNoise);
+
+    bag.close();
 
     // Optimize graph
     graph.print("Graph: \n");

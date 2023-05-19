@@ -63,6 +63,30 @@ catkin_package(
 # add_library(hri_multimodal_fusion)
 # target_link_libraries(hri_multimodal_fusion gtsam ${catkin_LIBRARIES})
 
+add_executable(cal_graph src/cal_graph.cpp)
+target_include_directories(cal_graph
+  PRIVATE
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${GTSAM_INCLUDE_DIRS}
+    ${GTSAM_UNSTABLE_INCLUDE_DIRS}
+)
+target_link_libraries(cal_graph gtsam gtsam_unstable ${catkin_LIBRARIES})
+add_dependencies(cal_graph gtsam gtsam_unstable)
+
+add_executable(inference_graph src/inference_graph.cpp)
+target_include_directories(inference_graph
+  PRIVATE
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${GTSAM_INCLUDE_DIRS}
+    ${GTSAM_UNSTABLE_INCLUDE_DIRS}
+)
+target_link_libraries(inference_graph gtsam gtsam_unstable ${catkin_LIBRARIES})
+add_dependencies(inference_graph gtsam gtsam_unstable)
+
+
+
 add_executable(oakd_cal_graph src/oakd_cal_graph.cpp)
 target_include_directories(oakd_cal_graph
   PRIVATE

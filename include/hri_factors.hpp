@@ -89,11 +89,12 @@ class StateTransition : public gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Ve
 protected:
 
   double dt_;   /// time difference between frames in seconds
+  gtsam::Vector6 mean_;
 
 public:
 
-  StateTransition(gtsam::Key key1, gtsam::Key key2, double dt, const gtsam::SharedNoiseModel& model)
-  : gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6>(model, key1, key2), dt_(dt) {}
+  StateTransition(gtsam::Key key1, gtsam::Key key2, const double dt, const gtsam::Vector6& Mean, const gtsam::SharedNoiseModel& model)
+  : gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6>(model, key1, key2), dt_(dt), mean_(Mean) {}
 
   ~StateTransition() override {}
 
@@ -121,16 +122,65 @@ public:
                                            0., 0., 0., 0., -0.5*dt_, 0.,
                                            0., 0., 0., 0., 0., -0.5*dt_).finished();
 
-    return (gtsam::Vector(6) << T2(0) - (T1(0) + 0.5*dt_*(T1(3)+T2(3))),
-                                T2(1) - (T1(1) + 0.5*dt_*(T1(4)+T2(4))), 
-                                T2(2) - (T1(2) + 0.5*dt_*(T1(5)+T2(5))),
-                                2*T2(0) - 2*T1(0) - dt_*(T1(3)+T2(3)),
-                                2*T2(1) - 2*T1(1) - dt_*(T1(4)+T2(4)),
-                                2*T2(2) - 2*T1(2) - dt_*(T1(5)+T2(5))).finished();
+    return (gtsam::Vector(6) << T2(0) - (T1(0) + 0.5*dt_*(T1(3)+T2(3))) - mean_(0),
+                                T2(1) - (T1(1) + 0.5*dt_*(T1(4)+T2(4))) - mean_(1), 
+                                T2(2) - (T1(2) + 0.5*dt_*(T1(5)+T2(5))) - mean_(2),
+                                2*T2(0) - 2*T1(0) - dt_*(T1(3)+T2(3)) - dt_*mean_(3),
+                                2*T2(1) - 2*T1(1) - dt_*(T1(4)+T2(4)) - dt_*mean_(4),
+                                2*T2(2) - 2*T1(2) - dt_*(T1(5)+T2(5)) - dt_*mean_(5)).finished();
 
   }
 
 };
+
+class ConstVelStateTransition : public gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6> {
+
+protected:
+
+  double dt_;   /// time difference between frames in seconds
+
+public:
+
+  ConstVelStateTransition(gtsam::Key key1, gtsam::Key key2, const double dt, const gtsam::SharedNoiseModel& model)
+  : gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6>(model, key1, key2), dt_(dt) {}
+
+  ~ConstVelStateTransition() override {}
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new ConstVelStateTransition(*this))); }
+
+  /**
+   * Calculates the error
+   */
+  gtsam::Vector evaluateError(const gtsam::Vector6& T1, const gtsam::Vector6& T2,
+      gtsam::OptionalMatrixType H1, gtsam::OptionalMatrixType H2) const override {
+
+    if (H1) (*H1) = (gtsam::Matrix(6,6) << -1., 0., 0., -dt_, 0., 0., 
+                                            0., -1., 0., 0., -dt_, 0.,
+                                            0., 0., -1., 0., 0., -dt_,
+                                            0., 0., 0., -1., 0., 0.,
+                                            0., 0., 0., 0., -1., 0.,
+                                            0., 0., 0., 0., 0., -1.).finished();
+    if (H2) (*H2) = (gtsam::Matrix(6,6) << 1., 0., 0., 0., 0., 0., 
+                                           0., 1., 0., 0., 0., 0.,
+                                           0., 0., 1., 0., 0., 0.,
+                                           0., 0., 0., 1., 0., 0.,
+                                           0., 0., 0., 0., 1., 0.,
+                                           0., 0., 0., 0., 0., 1.).finished();
+
+    return (gtsam::Vector(6) << T2(0) - T1(0) - dt_*T1(3),
+                                T2(1) - T1(1) - dt_*T1(4), 
+                                T2(2) - T1(2) - dt_*T1(5),
+                                T2(3) - T1(3),
+                                T2(4) - T1(4),
+                                T2(5) - T1(5)).finished();
+
+  }
+
+};
+
 
 
 class StateTransitionCalibration : public gtsam::NoiseModelFactor4<gtsam::Vector6,gtsam::Vector6,gtsam::Vector6,gtsam::Vector6> {
