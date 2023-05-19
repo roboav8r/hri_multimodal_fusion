@@ -40,9 +40,8 @@ int main() {
     gtsam::Values initial;
     gtsam::Symbol last_state_symbol, state_symbol, sensor_noise_symbol;
 
-    // Sensor noise models (variable to be optimized)
-    gtsam::Vector3 oakdPosNoise(0.1,0.1,0.1);
-    sensor_noise_symbol = gtsam::Symbol('s',1);
+    // Sensor noise models
+    auto oakdPosNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(34.0059364,25.9475303,54.9710593,0.,0.,0.));
 
     // Read bag file
     rosbag::Bag bag;
@@ -64,17 +63,22 @@ int main() {
 
         if (ii==1) // if this is the first node, add a measurement factor
         { 
-            graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
+            graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z,oakdPosNoise);
         } 
         else // For subsequent nodes
         {
             // Add state transition factor and measurement factor
             dt = t - last_t;
             gtsam::SharedDiagonal Q = 
-                gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*dt.toSec(), 0.1*dt.toSec(), 0.1*dt.toSec()), true);
+                gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(135.688255*pow(dt.toSec(),2), 
+                                                                   98.0265414*pow(dt.toSec(),2),
+                                                                   395.476227*pow(dt.toSec(),2),
+                                                                   0.100000196*dt.toSec(), 
+                                                                   0.0999837353*dt.toSec(), 
+                                                                   0.0997463441*dt.toSec()), true);
             graph.emplace_shared<ConstVelStateTransition>(last_state_symbol,state_symbol,dt.toSec(),Q);
 
-            graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
+            graph.emplace_shared<OakDInferenceFactor>(state_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z,oakdPosNoise);
 
 
         }
@@ -89,8 +93,6 @@ int main() {
 
         if (ii>n_meas) {break;}
     }
-
-    initial.insert(sensor_noise_symbol,oakdPosNoise);
 
     bag.close();
 

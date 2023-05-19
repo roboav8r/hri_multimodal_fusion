@@ -38,11 +38,15 @@ int main() {
     // Graph variables and parameters
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;
-    gtsam::Symbol last_state_symbol, state_symbol, sensor_noise_symbol;
+    gtsam::Symbol last_state_symbol, state_symbol, sensor_noise_symbol, proc_noise_symbol;
 
     // Sensor noise models (variable to be optimized)
     gtsam::Vector3 oakdPosNoise(0.1,0.1,0.1);
-    sensor_noise_symbol = gtsam::Symbol('s',1);
+    sensor_noise_symbol = gtsam::Symbol('R',1);
+
+    // Process noise model
+    gtsam::Vector6 procNoise(0.1,0.1,0.1,0.1,0.1,0.1);
+    proc_noise_symbol = gtsam::Symbol('Q',1);
 
     // Read bag file
     rosbag::Bag bag;
@@ -70,9 +74,9 @@ int main() {
         {
             // Add state transition factor and measurement factor
             dt = t - last_t;
-            gtsam::SharedDiagonal Q = 
-                gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*dt.toSec(), 0.1*dt.toSec(), 0.1*dt.toSec()), true);
-            graph.emplace_shared<ConstVelStateTransition>(last_state_symbol,state_symbol,dt.toSec(),Q);
+            //gtsam::SharedDiagonal Q = 
+                //gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*pow(dt.toSec(),2), 0.1*dt.toSec(), 0.1*dt.toSec(), 0.1*dt.toSec()), true);
+            graph.emplace_shared<ConstVelStateTransCal>(last_state_symbol,state_symbol,proc_noise_symbol,dt.toSec());
 
             graph.emplace_shared<OakDCalibrationFactor>(state_symbol,sensor_noise_symbol,det->detections[0].position.x, det->detections[0].position.y, det->detections[0].position.z);
 
@@ -91,6 +95,7 @@ int main() {
     }
 
     initial.insert(sensor_noise_symbol,oakdPosNoise);
+    initial.insert(proc_noise_symbol,procNoise);
 
     bag.close();
 

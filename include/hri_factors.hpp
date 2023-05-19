@@ -133,56 +133,6 @@ public:
 
 };
 
-class ConstVelStateTransition : public gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6> {
-
-protected:
-
-  double dt_;   /// time difference between frames in seconds
-
-public:
-
-  ConstVelStateTransition(gtsam::Key key1, gtsam::Key key2, const double dt, const gtsam::SharedNoiseModel& model)
-  : gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6>(model, key1, key2), dt_(dt) {}
-
-  ~ConstVelStateTransition() override {}
-
-  /// @return a deep copy of this factor
-  gtsam::NonlinearFactor::shared_ptr clone() const override {
-    return std::static_pointer_cast<gtsam::NonlinearFactor>(
-        gtsam::NonlinearFactor::shared_ptr(new ConstVelStateTransition(*this))); }
-
-  /**
-   * Calculates the error
-   */
-  gtsam::Vector evaluateError(const gtsam::Vector6& T1, const gtsam::Vector6& T2,
-      gtsam::OptionalMatrixType H1, gtsam::OptionalMatrixType H2) const override {
-
-    if (H1) (*H1) = (gtsam::Matrix(6,6) << -1., 0., 0., -dt_, 0., 0., 
-                                            0., -1., 0., 0., -dt_, 0.,
-                                            0., 0., -1., 0., 0., -dt_,
-                                            0., 0., 0., -1., 0., 0.,
-                                            0., 0., 0., 0., -1., 0.,
-                                            0., 0., 0., 0., 0., -1.).finished();
-    if (H2) (*H2) = (gtsam::Matrix(6,6) << 1., 0., 0., 0., 0., 0., 
-                                           0., 1., 0., 0., 0., 0.,
-                                           0., 0., 1., 0., 0., 0.,
-                                           0., 0., 0., 1., 0., 0.,
-                                           0., 0., 0., 0., 1., 0.,
-                                           0., 0., 0., 0., 0., 1.).finished();
-
-    return (gtsam::Vector(6) << T2(0) - T1(0) - dt_*T1(3),
-                                T2(1) - T1(1) - dt_*T1(4), 
-                                T2(2) - T1(2) - dt_*T1(5),
-                                T2(3) - T1(3),
-                                T2(4) - T1(4),
-                                T2(5) - T1(5)).finished();
-
-  }
-
-};
-
-
-
 class StateTransitionCalibration : public gtsam::NoiseModelFactor4<gtsam::Vector6,gtsam::Vector6,gtsam::Vector6,gtsam::Vector6> {
 
 protected:
@@ -240,6 +190,109 @@ public:
                                 (2*X2(0) - 2*X1(0) - dt_*(X1(3)+X2(3)) - dt_*Mean(3))/Var(3),
                                 (2*X2(1) - 2*X1(1) - dt_*(X1(4)+X2(4)) - dt_*Mean(4))/Var(4),
                                 (2*X2(2) - 2*X1(2) - dt_*(X1(5)+X2(5)) - dt_*Mean(5))/Var(5)).finished();
+
+  }
+
+};
+
+class ConstVelStateTransition : public gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6> {
+
+protected:
+
+  double dt_;   /// time difference between frames in seconds
+
+public:
+
+  ConstVelStateTransition(gtsam::Key key1, gtsam::Key key2, const double dt, const gtsam::SharedNoiseModel& model)
+  : gtsam::NoiseModelFactor2<gtsam::Vector6,gtsam::Vector6>(model, key1, key2), dt_(dt) {}
+
+  ~ConstVelStateTransition() override {}
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new ConstVelStateTransition(*this))); }
+
+  /**
+   * Calculates the error
+   */
+  gtsam::Vector evaluateError(const gtsam::Vector6& T1, const gtsam::Vector6& T2,
+      gtsam::OptionalMatrixType H1, gtsam::OptionalMatrixType H2) const override {
+
+    if (H1) (*H1) = (gtsam::Matrix(6,6) << -1., 0., 0., -dt_, 0., 0., 
+                                            0., -1., 0., 0., -dt_, 0.,
+                                            0., 0., -1., 0., 0., -dt_,
+                                            0., 0., 0., -1., 0., 0.,
+                                            0., 0., 0., 0., -1., 0.,
+                                            0., 0., 0., 0., 0., -1.).finished();
+    if (H2) (*H2) = (gtsam::Matrix(6,6) << 1., 0., 0., 0., 0., 0., 
+                                           0., 1., 0., 0., 0., 0.,
+                                           0., 0., 1., 0., 0., 0.,
+                                           0., 0., 0., 1., 0., 0.,
+                                           0., 0., 0., 0., 1., 0.,
+                                           0., 0., 0., 0., 0., 1.).finished();
+
+    return (gtsam::Vector(6) << T2(0) - T1(0) - dt_*T1(3),
+                                T2(1) - T1(1) - dt_*T1(4), 
+                                T2(2) - T1(2) - dt_*T1(5),
+                                T2(3) - T1(3),
+                                T2(4) - T1(4),
+                                T2(5) - T1(5)).finished();
+
+  }
+
+};
+
+class ConstVelStateTransCal : public gtsam::NoiseModelFactor3<gtsam::Vector6,gtsam::Vector6,gtsam::Vector6> {
+
+protected:
+
+  double dt_;   /// time difference between frames in seconds
+
+public:
+
+  ConstVelStateTransCal(gtsam::Key key1, gtsam::Key key2, gtsam::Key noiseKey, const double dt)
+  : gtsam::NoiseModelFactor3<gtsam::Vector6,gtsam::Vector6,gtsam::Vector6>(gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(1,1,1,1,1,1)), key1, key2, noiseKey), dt_(dt) {}
+
+  ~ConstVelStateTransCal() override {}
+
+  /// @return a deep copy of this factor
+  gtsam::NonlinearFactor::shared_ptr clone() const override {
+    return std::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new ConstVelStateTransCal(*this))); }
+
+  /**
+   * Calculates the error
+   */
+  gtsam::Vector evaluateError(const gtsam::Vector6& T1, const gtsam::Vector6& T2, const gtsam::Vector6& Var, 
+      gtsam::OptionalMatrixType H1, gtsam::OptionalMatrixType H2, gtsam::OptionalMatrixType HVar) const override {
+
+    if (H1) (*H1) = (gtsam::Matrix(6,6) << -2./(Var(0)*pow(dt_,2)), 0., 0., -2/(Var(0)*dt_), 0., 0., 
+                                            0., -2./(Var(1)*pow(dt_,2)), 0., 0., -2/(Var(1)*dt_), 0.,
+                                            0., 0., -2./(Var(2)*pow(dt_,2)), 0., 0., -2/(Var(2)*dt_),
+                                            0., 0., 0., -1./(dt_*Var(3)), 0., 0.,
+                                            0., 0., 0., 0., -1./(dt_*Var(4)), 0.,
+                                            0., 0., 0., 0., 0., -1./(dt_*Var(5))).finished();
+    if (H2) (*H2) = (gtsam::Matrix(6,6) << 2./(Var(0)*pow(dt_,2)), 0., 0., 0., 0., 0., 
+                                           0., 2./(Var(1)*pow(dt_,2)), 0., 0., 0., 0.,
+                                           0., 0., 2./(Var(2)*pow(dt_,2)), 0., 0., 0.,
+                                           0., 0., 0., 1./(dt_*Var(3)), 0., 0.,
+                                           0., 0., 0., 0., 1./(dt_*Var(4)), 0.,
+                                           0., 0., 0., 0., 0., 1./(dt_*Var(5))).finished();
+
+    if (HVar) (*HVar) = (gtsam::Matrix(6,6) << -(T2(0) - T1(0) - dt_*T1(3))/(pow(Var(0),2)*pow(dt_,2)/2), 0, 0, 0, 0, 0,
+                                               0, -(T2(1) - T1(1) - dt_*T1(4))/(pow(Var(1),2)*pow(dt_,2)/2), 0, 0, 0, 0,
+                                               0, 0, -(T2(2) - T1(2) - dt_*T1(5))/(pow(Var(2),2)*pow(dt_,2)/2), 0, 0, 0,
+                                               0, 0, 0, -(T2(3) - T1(3))/(dt_*(pow(Var(3),2))), 0, 0,
+                                               0, 0, 0, 0, -(T2(4) - T1(4))/(dt_*(pow(Var(4),2))), 0,
+                                               0, 0, 0, 0, 0, -(T2(4) - T1(4))/(dt_*(pow(Var(4),2)))).finished(); 
+
+    return (gtsam::Vector(6) << (T2(0) - T1(0) - dt_*T1(3))/(Var(0)*pow(dt_,2)/2),
+                                (T2(1) - T1(1) - dt_*T1(4))/(Var(1)*pow(dt_,2)/2), 
+                                (T2(2) - T1(2) - dt_*T1(5))/(Var(2)*pow(dt_,2)/2),
+                                (T2(3) - T1(3))/(dt_*Var(3)),
+                                (T2(4) - T1(4))/(dt_*Var(4)),
+                                (T2(5) - T1(5))/(dt_*Var(5))).finished();
 
   }
 
