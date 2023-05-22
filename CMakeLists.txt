@@ -85,7 +85,16 @@ target_include_directories(inference_graph
 target_link_libraries(inference_graph gtsam gtsam_unstable ${catkin_LIBRARIES})
 add_dependencies(inference_graph gtsam gtsam_unstable)
 
-
+add_executable(inference_filter src/inference_filter.cpp)
+target_include_directories(inference_filter
+  PRIVATE
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${GTSAM_INCLUDE_DIRS}
+    ${GTSAM_UNSTABLE_INCLUDE_DIRS}
+)
+target_link_libraries(inference_filter gtsam gtsam_unstable ${catkin_LIBRARIES})
+add_dependencies(inference_filter gtsam gtsam_unstable)
 
 add_executable(oakd_cal_graph src/oakd_cal_graph.cpp)
 target_include_directories(oakd_cal_graph
