@@ -50,5 +50,5 @@ https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
 https://gtsam-jlblanco-docs.readthedocs.io/en/latest/Overview.html
 
 # Improvements
-- Make template class for transition model based on number of spatial dimensions and derivatives
+- Make template class for filters, transition models, sensor models based on number of spatial dimensions and derivatives
 - Make motion models and sensor models static

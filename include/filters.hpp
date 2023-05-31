@@ -1,5 +1,6 @@
 #include "state.hpp"
 #include "transition_models.hpp"
+#include "obs_models.hpp"
 
 class InferenceFilter
 {
@@ -15,13 +16,12 @@ class InferenceFilter
     // Mutators
     void Predict()
     {
-        //this->state_.x = kf_.predict(this->state_.x,this->transModel_,this->inputModel_,this->input_,this->transNoise_);
-        this->state_.x = kf_.predict(this->state_.x,motionModel_.TransModel(),motionModel_.InputModel(),motionModel_.Input(),motionModel_.TransCov());
+        this->state_.x = kf_.predict(this->state_.x,this->motionModel_.TransModel(),this->motionModel_.InputModel(),this->motionModel_.Input(),this->motionModel_.TransCov());
     }
 
     void Update()
     {
-        this->state_.x = kf_.update(this->state_.x, this->oakDMeasModel_, this->oakDMeas_, this->oakDNoise_);
+        this->state_.x = kf_.update(this->state_.x, this->oakDSensor_.MeasModel(), this->oakDMeas_, this->oakDSensor_.NoiseCov());
     }
 
     void OakDUpdate(const depthai_ros_msgs::SpatialDetectionArray::ConstPtr& msg)
@@ -69,7 +69,7 @@ class InferenceFilter
                 }
                 // Set filter to initialized
                 state_.x = this->kf_.init(gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
-                                        gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(this->oakDNoiseCoeffs_(0),this->oakDNoiseCoeffs_(1),this->oakDNoiseCoeffs_(2),this->motionModel_.TransVar()(0),this->motionModel_.TransVar()(1),this->motionModel_.TransVar()(2))));
+                                        gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(this->oakDSensor_.NoiseVar()(0),this->oakDSensor_.NoiseVar()(1),this->oakDSensor_.NoiseVar()(2),this->motionModel_.TransVar()(0),this->motionModel_.TransVar()(1),this->motionModel_.TransVar()(2))));
                 this->initialized_ = true;
             }
         }
@@ -81,9 +81,7 @@ class InferenceFilter
 
     // GTSAM measurement models
     gtsam::Vector3 oakDMeas_;
-    const gtsam::Matrix oakDMeasModel_ = (gtsam::Matrix(3,6)<< 1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0).finished();
-    const gtsam::Vector3 oakDNoiseCoeffs_ = gtsam::Vector3(34.0059364,25.9475303,54.9710593);
-    const gtsam::SharedDiagonal oakDNoise_ = gtsam::noiseModel::Diagonal::Sigmas(oakDNoiseCoeffs_);
+    OakDSensor oakDSensor_ = OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
     
     // GTSAM filter member variables
     gtsam::KalmanFilter kf_{6, gtsam::KalmanFilter::Factorization::QR};
