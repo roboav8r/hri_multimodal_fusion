@@ -48,3 +48,7 @@ rostopic echo -b src/hri_multimodal_fusion/data/2023-04-26-14-49-44.orig.bag -p 
 # Additional Resources and References
 https://www.cs.cmu.edu/~kaess/pub/Dellaert17fnt.pdf
 https://gtsam-jlblanco-docs.readthedocs.io/en/latest/Overview.html
+
+# Improvements
+- Make template class for transition model based on number of spatial dimensions and derivatives
+- Make motion models and sensor models static
