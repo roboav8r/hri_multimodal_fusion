@@ -1,0 +1,9 @@
+clutter:
+  oakd:
+    type: "poisson"
+    lambda_c: 5 # unitless
+    az_min: -35.0 # degrees
+    az_max: 35.0
+    el_min: -29.0
+    el_max: 29.0
+    range: 10 # meters
