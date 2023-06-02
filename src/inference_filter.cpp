@@ -14,13 +14,11 @@
 
 #include "transition_models.hpp"
 #include "filters.hpp"
-#include "io.hpp"
 
 // Constants
-std::string yoloTopic;// = "yolov4_publisher/color/yolov4_Spatial_detections";
-
-//XmlRpc::XmlRpcValue transitionParams;
+Filters::FilterParams filterParams;
 std::vector<double> motionVar;
+std::string yoloTopic;
 std::vector<double> sensorVar;
 
 int main(int argc, char **argv) {
@@ -28,6 +26,9 @@ int main(int argc, char **argv) {
     // Start node
     ros::init(argc, argv, "inference_filter");
     ros::NodeHandle nh;
+
+    // Load filter parameters
+    filterParams = Filters::ExtractParams("filter/", nh);
 
     // Generate state transition models from parameter file
     nh.getParam("/transition/sigma", motionVar);
@@ -37,10 +38,11 @@ int main(int argc, char **argv) {
     nh.getParam("/sensors/topic", yoloTopic);
     nh.getParam("/sensors/sigma",sensorVar);
     static Sensors::OakDSensor oakdModel(sensorVar);
+    static Sensors::Clutter3D oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
 
     // Run the filter
-    InferenceFilter filter(cvMotion, oakdModel);
-    ros::Subscriber yoloSub = nh.subscribe(yoloTopic, 1, &InferenceFilter::OakDUpdate, &filter);
+    Filters::InferenceFilter filter(filterParams, cvMotion, oakdModel, oakdClutter);
+    ros::Subscriber yoloSub = nh.subscribe(yoloTopic, 1, &Filters::InferenceFilter::OakDUpdate, &filter);
 
     ros::spin();
     return 0;

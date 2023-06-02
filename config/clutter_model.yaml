@@ -1,9 +1,9 @@
 clutter:
-  oakd:
-    type: "poisson"
+    type: 0 # FRUSTRUM_3D - See Sensors::ClutterType enum
     lambda_c: 5 # unitless
-    az_min: -35.0 # degrees
-    az_max: 35.0
-    el_min: -29.0
-    el_max: 29.0
-    range: 10 # meters
+    x_min: -35.0 # degrees in xaxis
+    x_max: 35.0
+    y_min: -29.0 # degrees in y axis
+    y_max: 29.0
+    z_min: 0.0 #meters in range
+    z_max: 10.0 # meters

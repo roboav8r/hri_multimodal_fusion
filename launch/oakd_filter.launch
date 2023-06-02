@@ -5,13 +5,17 @@
     <arg name="calib_mode" default="false" /> <!-- options: true to calibrate, false to run inference -->
 
     <!-- Config file paths -->
+    <arg name="filter_param_path" default="config/filter_params.yaml" />
     <arg name="state_transition_path" default="config/trans_model.yaml" />
     <arg name="obs_model_path" default="config/obs_model.yaml" />
+    <arg name="clutter_model_path" default="config/clutter_model.yaml" />
 
     <!-- If running in inference mode, load parameters to parameter server -->
     <group unless="$(arg calib_mode)" >
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg filter_param_path)" />
         <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg state_transition_path)" />
         <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg obs_model_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg clutter_model_path)" />
     </group>
 
     <!-- Launch sensors -->

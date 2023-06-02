@@ -1,20 +1,51 @@
+#ifndef FILTERS_H
+#define FILTERS_H
+
+#include <ros/ros.h>
+
 #include "state.hpp"
 #include "transition_models.hpp"
 #include "obs_models.hpp"
 
+namespace Filters {
 
+struct FilterParams
+{
+    int MaxGaussians;
+    double PruneThresh;
+    double MergeThresh;
+    double PGate;
+    bool EnableGating;
+};
+
+// Helper function to extract filter params from ros param path
+FilterParams ExtractParams(std::string param_ns, ros::NodeHandle n)
+{
+    FilterParams params;
+    n.getParam(param_ns + "max_gaussians", params.MaxGaussians);
+    n.getParam(param_ns + "prune_threshold", params.PruneThresh);
+    n.getParam(param_ns + "merge_threshold", params.MergeThresh);
+    n.getParam(param_ns + "p_gate", params.PGate);
+    n.getParam(param_ns + "gating", params.EnableGating);
+
+    return params;
+};
 
 class InferenceFilter
 {
     public:
-    // Default Constructor
-    InferenceFilter(){};
+    // Default Constructor with parameters
+    InferenceFilter(FilterParams par, Sensors::Clutter3D clutter_model) 
+        : params_(par), clutterModel_(clutter_model) {};
 
     // Construct with motion model
-    InferenceFilter(TransitionModels::ConstVelMotion cv_mot) : motionModel_(cv_mot) {};
+    InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::Clutter3D clutter_model) 
+        : params_(par), motionModel_(cv_mot), clutterModel_(clutter_model) {};
 
     // Construct with motion and obs models
-    InferenceFilter(TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d) : motionModel_(cv_mot), oakDSensor_(oak_d) {};
+    InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
+        : params_(par), motionModel_(cv_mot), oakDSensor_(oak_d), clutterModel_(clutter_model) {};
+
 
     // Accessors
     ObjectState State() {
@@ -84,16 +115,18 @@ class InferenceFilter
     };
 
     private:
+    // GTSAM filter member variables
+    gtsam::KalmanFilter kf_{6, gtsam::KalmanFilter::Factorization::QR};
+    ObjectState state_;
+    FilterParams params_;
+    Sensors::Clutter3D clutterModel_;
+
     // State transition models
     TransitionModels::ConstVelMotion motionModel_ = TransitionModels::ConstVelMotion(gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441));
 
     // GTSAM measurement models
     gtsam::Vector3 oakDMeas_;
     Sensors::OakDSensor oakDSensor_ = Sensors::OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
-    
-    // GTSAM filter member variables
-    gtsam::KalmanFilter kf_{6, gtsam::KalmanFilter::Factorization::QR};
-    ObjectState state_;
 
     // ROS/loop control member variables
     ros::Time t_, last_t_;
@@ -101,3 +134,7 @@ class InferenceFilter
     bool initialized_{false};
 
 };
+
+}; // Filters namespace
+
+#endif
