@@ -1,16 +1,30 @@
+#ifndef TRANS_MODELS_H
+#define TRANS_MODELS_H
+
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
+
+namespace TransitionModels {
 
 class ConstVelMotion 
 {
     public:
-    // Constructor
+    // Default Constructor
     ConstVelMotion()
     {
         transNoiseVar_= gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441);
     };
 
+    // Construct from input vector
     ConstVelMotion(gtsam::Vector6 noise_var) : transNoiseVar_(noise_var) {};
+
+    // Construct from yaml input
+    ConstVelMotion(std::vector<double> const noise_var) 
+    {
+        for (int32_t ii =0; ii< noise_var.size(); ++ii) {
+            transNoiseVar_(ii) = noise_var[ii];
+        };
+    };
 
     // Accessors
     gtsam::Matrix TransModel()
@@ -70,3 +84,7 @@ class ConstVelMotion
     const gtsam::Vector6 input_ = gtsam::Vector::Zero(6); // "u" vector
 
 };
+
+}; // TransitionModels namespace
+
+#endif

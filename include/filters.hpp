@@ -2,11 +2,19 @@
 #include "transition_models.hpp"
 #include "obs_models.hpp"
 
+
+
 class InferenceFilter
 {
     public:
-    // Constructor
+    // Default Constructor
     InferenceFilter(){};
+
+    // Construct with motion model
+    InferenceFilter(TransitionModels::ConstVelMotion cv_mot) : motionModel_(cv_mot) {};
+
+    // Construct with motion and obs models
+    InferenceFilter(TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d) : motionModel_(cv_mot), oakDSensor_(oak_d) {};
 
     // Accessors
     ObjectState State() {
@@ -77,11 +85,11 @@ class InferenceFilter
 
     private:
     // State transition models
-    ConstVelMotion motionModel_ = ConstVelMotion(gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441));
+    TransitionModels::ConstVelMotion motionModel_ = TransitionModels::ConstVelMotion(gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441));
 
     // GTSAM measurement models
     gtsam::Vector3 oakDMeas_;
-    OakDSensor oakDSensor_ = OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
+    Sensors::OakDSensor oakDSensor_ = Sensors::OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
     
     // GTSAM filter member variables
     gtsam::KalmanFilter kf_{6, gtsam::KalmanFilter::Factorization::QR};

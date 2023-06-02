@@ -1,0 +1,26 @@
+<launch>
+
+    <arg name="visualization" default="false" />
+    <arg name="config" default="oakd" />
+    <arg name="calib_mode" default="false" /> <!-- options: true to calibrate, false to run inference -->
+
+    <!-- Config file paths -->
+    <arg name="state_transition_path" default="config/trans_model.yaml" />
+    <arg name="obs_model_path" default="config/obs_model.yaml" />
+
+    <!-- If running in inference mode, load parameters to parameter server -->
+    <group unless="$(arg calib_mode)" >
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg state_transition_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg obs_model_path)" />
+    </group>
+
+    <!-- Launch sensors -->
+    <include file="$(find depthai_examples)/launch/yolov4_publisher.launch" />
+
+    <!-- Launch training or inference node, as appropriate -->
+    <node name="inference_filter" pkg="hri_multimodal_fusion" type="inference_filter" output="screen"/>
+
+    <!-- RViz visualization -->
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_multimodal_fusion)/rviz/$(arg config)_$(arg mode).rviz" if="$(arg visualization)"/> -->
+
+</launch>

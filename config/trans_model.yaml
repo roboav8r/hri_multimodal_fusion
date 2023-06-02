@@ -1,4 +1,4 @@
 transition:
-    static:
-        type: "motion"
-        sigma: [135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441]
+    # standing: #activity label/name - TODO for multiple models
+    type: "ConstVelMotion"
+    sigma: [135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441]
