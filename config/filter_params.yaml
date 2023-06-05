@@ -1,6 +1,7 @@
 filter:
-  max_gaussians: 100, # limit on number of Gaussians
-  prune_threshold: .00001,  # pruning threshold
-  merge_threshold: 4.0, # merging threshold
-  p_gate: 0.999, #gate size in percentage
-  gating: true #enable/disable gating
+  frame_id:  'oak_rgb_camera_optical_frame'
+  max_gaussians: 100 # limit on number of Gaussians
+  prune_threshold: .00001  # pruning threshold
+  merge_threshold: 4.0 # merging threshold
+  p_gate: 0.999 #gate size in percentage
+  gating: True #enable/disable gating

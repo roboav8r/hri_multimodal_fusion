@@ -7,10 +7,13 @@
 #include "transition_models.hpp"
 #include "obs_models.hpp"
 
+#include "hri_multimodal_fusion/TrackedObject.h"
+
 namespace Filters {
 
 struct FilterParams
 {
+    std::string FrameId;
     int MaxGaussians;
     double PruneThresh;
     double MergeThresh;
@@ -22,6 +25,7 @@ struct FilterParams
 FilterParams ExtractParams(std::string param_ns, ros::NodeHandle n)
 {
     FilterParams params;
+    n.getParam(param_ns + "frame_id", params.FrameId);
     n.getParam(param_ns + "max_gaussians", params.MaxGaussians);
     n.getParam(param_ns + "prune_threshold", params.PruneThresh);
     n.getParam(param_ns + "merge_threshold", params.MergeThresh);
@@ -30,6 +34,29 @@ FilterParams ExtractParams(std::string param_ns, ros::NodeHandle n)
 
     return params;
 };
+
+// Helper function to convert GTSAM output to ROS message
+void FormatObjectMsg(ObjectState& state, hri_multimodal_fusion::TrackedObject& msg)
+{
+    // Update pose & covariance
+    msg.pose.pose.position.x=state.x->mean()[0];
+    msg.pose.pose.position.y=state.x->mean()[1];
+    msg.pose.pose.position.z=state.x->mean()[2];
+    msg.pose.pose.orientation.w=1;
+    msg.pose.covariance[0]=state.x->covariance()(0,0);
+    msg.pose.covariance[7]=state.x->covariance()(1,1);
+    msg.pose.covariance[14]=state.x->covariance()(2,2);
+
+
+    // Update velocity
+    msg.twist.twist.linear.x=state.x->mean()[3];
+    msg.twist.twist.linear.y=state.x->mean()[4];
+    msg.twist.twist.linear.z=state.x->mean()[5];
+    msg.twist.covariance[0]=state.x->covariance()(3,3); 
+    msg.twist.covariance[7]=state.x->covariance()(4,4);
+    msg.twist.covariance[14]=state.x->covariance()(5,5);
+    
+}
 
 class InferenceFilter
 {
@@ -43,8 +70,12 @@ class InferenceFilter
         : params_(par), motionModel_(cv_mot), clutterModel_(clutter_model) {};
 
     // Construct with motion and obs models
-    InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
-        : params_(par), motionModel_(cv_mot), oakDSensor_(oak_d), clutterModel_(clutter_model) {};
+    InferenceFilter(ros::NodeHandle nh, FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
+        : nh_(nh), params_(par), motionModel_(cv_mot), oakDSensor_(oak_d), clutterModel_(clutter_model) 
+        {
+            trackPub_ = nh_.advertise<hri_multimodal_fusion::TrackedObject>("tracks",10);
+            objectMsg_.header.frame_id = params_.FrameId;
+        };
 
 
     // Accessors
@@ -93,6 +124,9 @@ class InferenceFilter
 
             // Publish/output current state
             state_.x->print("State");
+            FormatObjectMsg(state_, objectMsg_);
+            objectMsg_.header.stamp = this->t_;
+            trackPub_.publish(objectMsg_);
 
 
         } else {
@@ -129,9 +163,14 @@ class InferenceFilter
     Sensors::OakDSensor oakDSensor_ = Sensors::OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
 
     // ROS/loop control member variables
+    ros::NodeHandle nh_;
     ros::Time t_, last_t_;
     double dt_;
     bool initialized_{false};
+
+    // Output
+    hri_multimodal_fusion::TrackedObject objectMsg_;
+    ros::Publisher trackPub_;
 
 };
 

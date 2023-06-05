@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     static Sensors::Clutter3D oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
 
     // Run the filter
-    Filters::InferenceFilter filter(filterParams, cvMotion, oakdModel, oakdClutter);
+    Filters::InferenceFilter filter(nh, filterParams, cvMotion, oakdModel, oakdClutter);
     ros::Subscriber yoloSub = nh.subscribe(yoloTopic, 1, &Filters::InferenceFilter::OakDUpdate, &filter);
 
     ros::spin();
