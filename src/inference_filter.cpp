@@ -31,8 +31,10 @@ int main(int argc, char **argv) {
     filterParams = Filters::ExtractParams("filter/", nh);
 
     // Generate state transition models from parameter file
-    nh.getParam("/transition/sigma", motionVar);
-    static TransitionModels::ConstVelMotion cvMotion(motionVar);
+    // TODO get length of transition/*/, create model of */type with sigma */sigmas and label *
+    nh.getParam("/transition/walking/sigma", motionVar);
+    static TransitionModels::ConstVel cvMotion(motionVar);
+    // TODO create static vector of transition models? pointers?
 
     // Generate observation models from parameter file
     nh.getParam("/sensors/topic", yoloTopic);
@@ -41,6 +43,7 @@ int main(int argc, char **argv) {
     static Sensors::Clutter3D oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
 
     // Run the filter
+    // TODO replace cvMotion with model vector and labels
     Filters::InferenceFilter filter(nh, filterParams, cvMotion, oakdModel, oakdClutter);
     ros::Subscriber yoloSub = nh.subscribe(yoloTopic, 1, &Filters::InferenceFilter::OakDUpdate, &filter);
 

@@ -55,6 +55,8 @@ void FormatObjectMsg(ObjectState& state, hri_multimodal_fusion::TrackedObject& m
     msg.twist.covariance[0]=state.x->covariance()(3,3); 
     msg.twist.covariance[7]=state.x->covariance()(4,4);
     msg.twist.covariance[14]=state.x->covariance()(5,5);
+
+    // TODO add activity as categorical distribution
     
 }
 
@@ -66,10 +68,12 @@ class InferenceFilter
         : params_(par), clutterModel_(clutter_model) {};
 
     // Construct with motion model
+    // TODO update for multiple motion models
     InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::Clutter3D clutter_model) 
         : params_(par), motionModel_(cv_mot), clutterModel_(clutter_model) {};
 
     // Construct with motion and obs models
+    // TODO update for multiple motion models
     InferenceFilter(ros::NodeHandle nh, FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
         : nh_(nh), params_(par), motionModel_(cv_mot), oakDSensor_(oak_d), clutterModel_(clutter_model) 
         {
@@ -86,12 +90,18 @@ class InferenceFilter
     // Mutators
     void Predict()
     {
+        // TODO Predict for multiple models
         this->state_.x = kf_.predict(this->state_.x,this->motionModel_.TransModel(),this->motionModel_.InputModel(),this->motionModel_.Input(),this->motionModel_.TransCov());
+    
+        // TODO predict activity state
     }
 
     void Update()
     {
+        // TODO update spatial state for multiple models
         this->state_.x = kf_.update(this->state_.x, this->oakDSensor_.MeasModel(), this->oakDMeas_, this->oakDSensor_.NoiseCov());
+    
+        // TODO update activity state
     }
 
     void OakDUpdate(const depthai_ros_msgs::SpatialDetectionArray::ConstPtr& msg)
@@ -107,6 +117,7 @@ class InferenceFilter
             std::cout<<this->dt_<<std::endl;
 
             // Compute state transition model based on dt_
+            // TODO update motion model vector
             motionModel_.UpdateTrans(this->dt_);
 
             // Do a prediction/propagation step
@@ -156,6 +167,7 @@ class InferenceFilter
     Sensors::Clutter3D clutterModel_;
 
     // State transition models
+    // TODO replace this with vector of models OR pointer to vector
     TransitionModels::ConstVelMotion motionModel_ = TransitionModels::ConstVelMotion(gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441));
 
     // GTSAM measurement models
