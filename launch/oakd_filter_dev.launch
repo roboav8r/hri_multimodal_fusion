@@ -1,0 +1,34 @@
+<launch>
+
+    <arg name="visualization" default="true" />
+    <arg name="config" default="oakd" />
+    <arg name="calib_mode" default="false" /> <!-- options: true to calibrate, false to run inference -->
+    <arg name="bag_filename" default="data/test2.bag" />
+
+    <!-- Config file paths -->
+    <arg name="filter_param_path" default="config/filter_params.yaml" />
+    <arg name="state_transition_path" default="config/trans_model.yaml" />
+    <arg name="obs_model_path" default="config/obs_model.yaml" />
+    <arg name="clutter_model_path" default="config/clutter_model.yaml" />
+
+    <!-- If running in inference mode, load parameters to parameter server -->
+    <group unless="$(arg calib_mode)" >
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg filter_param_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg state_transition_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg obs_model_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg clutter_model_path)" />
+    </group>
+
+    <!-- Launch bag file -->
+    <node pkg="rosbag" type="play" name="player" output="screen" required="true" 
+    args="--delay=4 --loop --clock --pause
+    --rate=1.0 -s 0 $(find hri_multimodal_fusion)/$(arg bag_filename)"/>
+    <param name="use_sim_time" value="true" />
+
+    <!-- Launch training or inference node, as appropriate -->
+    <node name="inference_filter" pkg="hri_multimodal_fusion" type="inference_filter" output="screen"/>
+
+    <!-- RViz visualization -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_multimodal_fusion)/config/devel.rviz" if="$(arg visualization)"/>
+
+</launch>
