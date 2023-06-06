@@ -17,7 +17,9 @@
 
 // Constants
 Filters::FilterParams filterParams;
-std::vector<double> motionVar;
+// std::vector<double> motionVar;
+TransitionModels::TransModelParams transModelParams;
+
 std::string yoloTopic;
 std::vector<double> sensorVar;
 
@@ -28,13 +30,10 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
 
     // Load filter parameters
-    filterParams = Filters::ExtractParams("filter/", nh);
+    filterParams = Filters::ExtractFilterParams("filter/", nh);
 
     // Generate state transition models from parameter file
-    // TODO get length of transition/*/, create model of */type with sigma */sigmas and label *
-    nh.getParam("/transition/walking/sigma", motionVar);
-    static TransitionModels::ConstVel cvMotion(motionVar);
-    // TODO create static vector of transition models? pointers?
+    transModelParams = TransitionModels::ExtractTransModelParams("transition/", nh);
 
     // Generate observation models from parameter file
     nh.getParam("/sensors/topic", yoloTopic);
@@ -43,8 +42,7 @@ int main(int argc, char **argv) {
     static Sensors::Clutter3D oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
 
     // Run the filter
-    // TODO replace cvMotion with model vector and labels
-    Filters::InferenceFilter filter(nh, filterParams, cvMotion, oakdModel, oakdClutter);
+    Filters::InferenceFilter filter(nh, filterParams, transModelParams, oakdModel, oakdClutter);
     ros::Subscriber yoloSub = nh.subscribe(yoloTopic, 1, &Filters::InferenceFilter::OakDUpdate, &filter);
 
     ros::spin();

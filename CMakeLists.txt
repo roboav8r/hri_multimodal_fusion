@@ -35,7 +35,7 @@ include_directories(
 # Declare ROS messages and services
 add_message_files(
     DIRECTORY msg 
-    FILES DetectionLabel.msg DetectionLabelArray.msg
+    FILES DetectionLabel.msg DetectionLabelArray.msg TrackedObject.msg
 )
 
 # Generate services in the 'srv' folder

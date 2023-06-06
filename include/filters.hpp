@@ -22,7 +22,7 @@ struct FilterParams
 };
 
 // Helper function to extract filter params from ros param path
-FilterParams ExtractParams(std::string param_ns, ros::NodeHandle n)
+FilterParams ExtractFilterParams(std::string param_ns, ros::NodeHandle n)
 {
     FilterParams params;
     n.getParam(param_ns + "frame_id", params.FrameId);
@@ -36,25 +36,28 @@ FilterParams ExtractParams(std::string param_ns, ros::NodeHandle n)
 };
 
 // Helper function to convert GTSAM output to ROS message
-void FormatObjectMsg(ObjectState& state, hri_multimodal_fusion::TrackedObject& msg)
+void FormatObjectMsg(gtsam::KalmanFilter::State& state, hri_multimodal_fusion::TrackedObject& msg)
 {
+    // TODO: Get most likely activity index
+    int8_t motionModelInd = 0;
+    
     // Update pose & covariance
-    msg.pose.pose.position.x=state.x->mean()[0];
-    msg.pose.pose.position.y=state.x->mean()[1];
-    msg.pose.pose.position.z=state.x->mean()[2];
+    msg.pose.pose.position.x=state->mean()[0];
+    msg.pose.pose.position.y=state->mean()[1];
+    msg.pose.pose.position.z=state->mean()[2];
     msg.pose.pose.orientation.w=1;
-    msg.pose.covariance[0]=state.x->covariance()(0,0);
-    msg.pose.covariance[7]=state.x->covariance()(1,1);
-    msg.pose.covariance[14]=state.x->covariance()(2,2);
+    msg.pose.covariance[0]=state->covariance()(0,0);
+    msg.pose.covariance[7]=state->covariance()(1,1);
+    msg.pose.covariance[14]=state->covariance()(2,2);
 
 
     // Update velocity
-    msg.twist.twist.linear.x=state.x->mean()[3];
-    msg.twist.twist.linear.y=state.x->mean()[4];
-    msg.twist.twist.linear.z=state.x->mean()[5];
-    msg.twist.covariance[0]=state.x->covariance()(3,3); 
-    msg.twist.covariance[7]=state.x->covariance()(4,4);
-    msg.twist.covariance[14]=state.x->covariance()(5,5);
+    msg.twist.twist.linear.x=state->mean()[3];
+    msg.twist.twist.linear.y=state->mean()[4];
+    msg.twist.twist.linear.z=state->mean()[5];
+    msg.twist.covariance[0]=state->covariance()(3,3); 
+    msg.twist.covariance[7]=state->covariance()(4,4);
+    msg.twist.covariance[14]=state->covariance()(5,5);
 
     // TODO add activity as categorical distribution
     
@@ -63,22 +66,22 @@ void FormatObjectMsg(ObjectState& state, hri_multimodal_fusion::TrackedObject& m
 class InferenceFilter
 {
     public:
-    // Default Constructor with parameters
-    InferenceFilter(FilterParams par, Sensors::Clutter3D clutter_model) 
-        : params_(par), clutterModel_(clutter_model) {};
+    // // Default Constructor with parameters
+    // InferenceFilter(FilterParams par, Sensors::Clutter3D clutter_model) 
+    //     : params_(par), clutterModel_(clutter_model) {};
 
-    // Construct with motion model
-    // TODO update for multiple motion models
-    InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::Clutter3D clutter_model) 
-        : params_(par), motionModel_(cv_mot), clutterModel_(clutter_model) {};
+    // // Construct with motion model
+    // // TODO update for multiple motion models
+    // InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::Clutter3D clutter_model) 
+    //     : params_(par), motionModel_(cv_mot), clutterModel_(clutter_model) {};
 
     // Construct with motion and obs models
     // TODO update for multiple motion models
-    InferenceFilter(ros::NodeHandle nh, FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
-        : nh_(nh), params_(par), motionModel_(cv_mot), oakDSensor_(oak_d), clutterModel_(clutter_model) 
+    InferenceFilter(ros::NodeHandle nh, FilterParams filt_par, TransitionModels::TransModelParams trans_par, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
+        : nh_(nh), filtParams_(filt_par), transModelParams_(trans_par), state_(trans_par.nModels), oakDSensor_(oak_d), clutterModel_(clutter_model) 
         {
             trackPub_ = nh_.advertise<hri_multimodal_fusion::TrackedObject>("tracks",10);
-            objectMsg_.header.frame_id = params_.FrameId;
+            objectMsg_.header.frame_id = filtParams_.FrameId;
         };
 
 
@@ -91,7 +94,7 @@ class InferenceFilter
     void Predict()
     {
         // TODO Predict for multiple models
-        this->state_.x = kf_.predict(this->state_.x,this->motionModel_.TransModel(),this->motionModel_.InputModel(),this->motionModel_.Input(),this->motionModel_.TransCov());
+        // this->state_.Spatial = kf_.predict(this->state_.Spatial,this->motionModel_.TransModel(),this->motionModel_.InputModel(),this->motionModel_.Input(),this->motionModel_.TransCov());
     
         // TODO predict activity state
     }
@@ -99,7 +102,7 @@ class InferenceFilter
     void Update()
     {
         // TODO update spatial state for multiple models
-        this->state_.x = kf_.update(this->state_.x, this->oakDSensor_.MeasModel(), this->oakDMeas_, this->oakDSensor_.NoiseCov());
+        // this->state_.Spatial = kf_.update(this->state_.Spatial, this->oakDSensor_.MeasModel(), this->oakDMeas_, this->oakDSensor_.NoiseCov());
     
         // TODO update activity state
     }
@@ -118,10 +121,15 @@ class InferenceFilter
 
             // Compute state transition model based on dt_
             // TODO update motion model vector
-            motionModel_.UpdateTrans(this->dt_);
+            //motionModel_.UpdateTrans(this->dt_);
+            for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
+                this->transModelParams_.SpatialTransModels[ii].UpdateTrans(this->dt_);
+            };
 
             // Do a prediction/propagation step
             Predict();
+
+            std::cout << "Predict done" << std::endl;
 
             // If measurement is available, do an update
             if (msg->detections.size() !=0) {
@@ -133,11 +141,19 @@ class InferenceFilter
                 Update();
             }
 
+            std::cout << "Update done" << std::endl;
+
+            // TODO find maximum likelihood index
+            int8_t motionModelInd = 0;
+
             // Publish/output current state
-            state_.x->print("State");
-            FormatObjectMsg(state_, objectMsg_);
-            objectMsg_.header.stamp = this->t_;
-            trackPub_.publish(objectMsg_);
+            // TODO only publish most likely state
+            // state_.Spatial[motionModelInd]->print("State");
+            // FormatObjectMsg(state_.Spatial[motionModelInd], objectMsg_);
+            // objectMsg_.header.stamp = this->t_;
+            // trackPub_.publish(objectMsg_);
+
+            std::cout << "Publishing done" << std::endl;
 
 
         } else {
@@ -151,24 +167,28 @@ class InferenceFilter
                 for (depthai_ros_msgs::SpatialDetection det : msg->detections) {
                     this->oakDMeas_ = {det.position.x, det.position.y, det.position.z};
                 }
-                // Set filter to initialized
-                state_.x = this->kf_.init(gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
-                                        gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(this->oakDSensor_.NoiseVar()(0),this->oakDSensor_.NoiseVar()(1),this->oakDSensor_.NoiseVar()(2),this->motionModel_.TransVar()(0),this->motionModel_.TransVar()(1),this->motionModel_.TransVar()(2))));
+                
+                // Generate a prior for each motion model 
+                for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
+                    state_.Spatial[ii] = this->kf_.init(gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
+                                    gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(this->oakDSensor_.NoiseVar()(0),this->oakDSensor_.NoiseVar()(1),this->oakDSensor_.NoiseVar()(2),this->transModelParams_.SpatialTransModels[ii].TransVar()(0),this->transModelParams_.SpatialTransModels[ii].TransVar()(1),this->transModelParams_.SpatialTransModels[ii].TransVar()(2))));
+                };
+
                 this->initialized_ = true;
             }
         }
     };
 
     private:
+
     // GTSAM filter member variables
     gtsam::KalmanFilter kf_{6, gtsam::KalmanFilter::Factorization::QR};
     ObjectState state_;
-    FilterParams params_;
+    FilterParams filtParams_;
     Sensors::Clutter3D clutterModel_;
 
     // State transition models
-    // TODO replace this with vector of models OR pointer to vector
-    TransitionModels::ConstVelMotion motionModel_ = TransitionModels::ConstVelMotion(gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441));
+    TransitionModels::TransModelParams transModelParams_;
 
     // GTSAM measurement models
     gtsam::Vector3 oakDMeas_;

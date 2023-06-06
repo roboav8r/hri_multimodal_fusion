@@ -1,8 +1,12 @@
 #include <gtsam/linear/KalmanFilter.h>
+#include <gtsam/discrete/DiscreteDistribution.h>
 
 class ObjectState
 {
     public:
-    gtsam::KalmanFilter::State x; // TODO replace this with spatial state?
-    // TODO add categorical dist. for activity
+    ObjectState(size_t n_models) : Spatial(std::vector<gtsam::KalmanFilter::State>(n_models)) {};
+
+
+    std::vector<gtsam::KalmanFilter::State> Spatial;
+    gtsam::DiscreteDistribution Motion;
 };
