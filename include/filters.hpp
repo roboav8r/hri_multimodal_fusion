@@ -93,15 +93,37 @@ class InferenceFilter
     // Mutators
     void Predict()
     {
-        // TODO Predict for multiple models
-        // this->state_.Spatial = kf_.predict(this->state_.Spatial,this->motionModel_.TransModel(),this->motionModel_.InputModel(),this->motionModel_.Input(),this->motionModel_.TransCov());
-    
+        // Predict for multiple models
+        for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
+        {
+
+            this->state_.Spatial[ii] = kfs_[ii].predict(this->state_.Spatial[ii],
+                                                        this->transModelParams_.SpatialTransModels[ii].TransModel(),
+                                                        this->transModelParams_.SpatialTransModels[ii].InputModel(),
+                                                        this->transModelParams_.SpatialTransModels[ii].Input(),
+                                                        this->transModelParams_.SpatialTransModels[ii].TransCov());
+            this->kfs_[ii].print("Predicted state for model " + ii);
+
+        };
         // TODO predict activity state
     }
 
     void Update()
     {
-        // TODO update spatial state for multiple models
+        // Update spatial state for multiple models
+                for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
+        {
+            std::cout << "Spatial state " << ii << ": " << std::endl;
+
+
+            this->state_.Spatial[ii] = kfs_[ii].update(this->state_.Spatial[ii],
+                                                       this->oakDSensor_.MeasModel(), 
+                                                       this->oakDMeas_, 
+                                                       this->oakDSensor_.NoiseCov());
+            auto loopstate = *(this->state_.Spatial[ii]);
+            loopstate.print();
+
+        };
         // this->state_.Spatial = kf_.update(this->state_.Spatial, this->oakDSensor_.MeasModel(), this->oakDMeas_, this->oakDSensor_.NoiseCov());
     
         // TODO update activity state
@@ -119,9 +141,7 @@ class InferenceFilter
             this->dt_ = (this->t_ - this->last_t_).toSec();
             std::cout<<this->dt_<<std::endl;
 
-            // Compute state transition model based on dt_
-            // TODO update motion model vector
-            //motionModel_.UpdateTrans(this->dt_);
+            // Update state transition model based on dt_
             for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
                 this->transModelParams_.SpatialTransModels[ii].UpdateTrans(this->dt_);
             };
@@ -168,10 +188,28 @@ class InferenceFilter
                     this->oakDMeas_ = {det.position.x, det.position.y, det.position.z};
                 }
                 
-                // Generate a prior for each motion model 
+                // Generate a KF object and a prior for each motion model
+                std::cout << "Initializing Kalman Filters" << std::endl;
                 for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
-                    state_.Spatial[ii] = this->kf_.init(gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
-                                    gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(this->oakDSensor_.NoiseVar()(0),this->oakDSensor_.NoiseVar()(1),this->oakDSensor_.NoiseVar()(2),this->transModelParams_.SpatialTransModels[ii].TransVar()(0),this->transModelParams_.SpatialTransModels[ii].TransVar()(1),this->transModelParams_.SpatialTransModels[ii].TransVar()(2))));
+
+                    this->kfs_.push_back(gtsam::KalmanFilter(6, gtsam::KalmanFilter::Factorization::QR));
+
+                    gtsam::Vector6 variance(this->oakDSensor_.NoiseVar()(0),
+                                        this->oakDSensor_.NoiseVar()(1),
+                                        this->oakDSensor_.NoiseVar()(2),
+                                        this->transModelParams_.SpatialTransModels[ii].TransVar()(3),
+                                        this->transModelParams_.SpatialTransModels[ii].TransVar()(4),
+                                        this->transModelParams_.SpatialTransModels[ii].TransVar()(5));
+                    // std::cout << ii << std::endl;
+                    // std::cout << variance << std::endl;
+
+                    
+                    this->state_.Spatial[ii] = this->kfs_[ii].init(
+                        gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
+                        gtsam::noiseModel::Diagonal::Sigmas(variance));
+
+                    // std::cout << this->transModelParams_.SpatialTransModels[ii].TransCov()->sigmas() << std::endl;
+                    this->kfs_[ii].print();
                 };
 
                 this->initialized_ = true;
@@ -182,7 +220,7 @@ class InferenceFilter
     private:
 
     // GTSAM filter member variables
-    gtsam::KalmanFilter kf_{6, gtsam::KalmanFilter::Factorization::QR};
+    std::vector<gtsam::KalmanFilter> kfs_;
     ObjectState state_;
     FilterParams filtParams_;
     Sensors::Clutter3D clutterModel_;

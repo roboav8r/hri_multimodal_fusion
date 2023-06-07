@@ -16,9 +16,9 @@
 #include "filters.hpp"
 
 // Constants
-Filters::FilterParams filterParams;
+static Filters::FilterParams filterParams;
 // std::vector<double> motionVar;
-TransitionModels::TransModelParams transModelParams;
+static TransitionModels::TransModelParams transModelParams;
 
 std::string yoloTopic;
 std::vector<double> sensorVar;
@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
 
     // Generate state transition models from parameter file
     transModelParams = TransitionModels::ExtractTransModelParams("transition/", nh);
+    TransitionModels::PrintTransModelParams(transModelParams);
 
     // Generate observation models from parameter file
     nh.getParam("/sensors/topic", yoloTopic);

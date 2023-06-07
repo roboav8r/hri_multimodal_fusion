@@ -18,6 +18,7 @@ enum SpatialTransType
 struct TransModelParams;
 
 TransModelParams ExtractTransModelParams(std::string, ros::NodeHandle);
+void PrintTransModelParams(TransModelParams);
 
 class SpatialTransition
 {
@@ -26,6 +27,7 @@ class SpatialTransition
     SpatialTransition(SpatialTransType, std::vector<double>);
 
     // Accessors
+    SpatialTransType ModelType();
     gtsam::Matrix TransModel();
     gtsam::Vector6 TransVar();
     gtsam::SharedDiagonal TransCov();
@@ -39,11 +41,12 @@ class SpatialTransition
 
     private:
     SpatialTransType type_;
+    gtsam::Matrix transModel_ = gtsam::Matrix::Zero(6,6); // "F" matrix
     gtsam::Vector6 transNoiseVar_;
-    gtsam::SharedDiagonal transNoiseCov_;
-    gtsam::Matrix transModel_;
-    const gtsam::Matrix inputModel_;
-    const gtsam::Vector6 input_;
+    gtsam::SharedDiagonal transNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(transNoiseVar_); // "Q" matrix
+    const gtsam::Matrix inputModel_ = gtsam::Matrix::Zero(6,6); // "B" matrix
+    const gtsam::Vector6 input_ = gtsam::Vector::Zero(6); // "u" vector
+
 };
 
 }; // TransitionModels namespace
@@ -91,6 +94,29 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
     return params;
 };
 
+// Helper function to print parameters
+void TransitionModels::PrintTransModelParams(TransitionModels::TransModelParams params)
+{
+    std::cout << "Got " << params.nModels << " spatial transition models." << std::endl << std::endl;
+
+    for (size_t ii=0; ii<params.nModels; ++ii) {
+        std::cout << "Spatial Transition Model: " << ii << std::endl;
+        std::cout << "Label: " << params.MotionLabels[ii] << std::endl;
+        std::cout << "Type: " << (TransitionModels::SpatialTransType)params.SpatialTransModels[ii].ModelType() << std::endl;
+        std::cout << "Transition Matrix: " << std::endl;
+        std::cout << params.SpatialTransModels[ii].TransModel() << std::endl;
+        std::cout << "Transition Variance Vector: " << std::endl;
+        std::cout << params.SpatialTransModels[ii].TransVar() << std::endl;
+        std::cout << "Transition Covariance Matrix: " << std::endl;
+        // gtsam::noiseModel::Diagonal tc = (*params.SpatialTransModels[ii].TransCov()); // TODO - how tho
+        //tc.print;
+        std::cout << "Input model: " << std::endl;
+        std::cout << params.SpatialTransModels[ii].InputModel() << std::endl;
+        std::cout << "Input: " << std::endl;
+        std::cout << params.SpatialTransModels[ii].Input() << std::endl << std::endl;
+    };
+};
+
 
 TransitionModels::SpatialTransition::SpatialTransition(TransitionModels::SpatialTransType type, std::vector<double> const noise_var)
     : type_(type)
@@ -115,6 +141,7 @@ TransitionModels::SpatialTransition::SpatialTransition(TransitionModels::Spatial
 }
 
 // Accessors
+TransitionModels::SpatialTransType TransitionModels::SpatialTransition::ModelType() { return this->type_; }
 gtsam::Matrix TransitionModels::SpatialTransition::TransModel() { return this->transModel_; }
 gtsam::Vector6 TransitionModels::SpatialTransition::TransVar() { return this->transNoiseVar_; }
 gtsam::SharedDiagonal TransitionModels::SpatialTransition::TransCov() { return this->transNoiseCov_; }
@@ -138,7 +165,6 @@ void TransitionModels::SpatialTransition::TransCov(double dt)
                        this->transNoiseVar_(3)*dt,
                        this->transNoiseVar_(4)*dt,
                        this->transNoiseVar_(5)*dt));
-    // TODO check that this is working properly
 }
 
 void TransitionModels::SpatialTransition::UpdateTrans(double dt)
@@ -151,167 +177,5 @@ void TransitionModels::SpatialTransition::UpdateTrans(double dt)
             break;
     }
 }
-
-//     private:
-//     SpatialTransType type_;
-//     gtsam::Vector6 transNoiseVar_;
-//     gtsam::SharedDiagonal transNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(transNoiseVar_); // "Q" matrix
-//     gtsam::Matrix transModel_ = gtsam::Matrix::Zero(6,6); // "F" matrix
-//     const gtsam::Matrix inputModel_ = gtsam::Matrix::Zero(6,6); // "B" matrix
-//     const gtsam::Vector6 input_ = gtsam::Vector::Zero(6); // "u" vector
-// }; // SpatialTransition class
-
-
-
-
-
-
-
-// class ConstPos 
-// {
-//     public:
-//     // Default Constructor
-//     ConstPos()
-//     {
-//         transNoiseVar_= gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0., 0., 0.);
-//         transModel_(0,0) = 1;
-//         transModel_(1,1) = 1;
-//         transModel_(2,2) = 1;
-//     };
-
-//     // Construct from input vector
-//     ConstPos(gtsam::Vector6 noise_var) : transNoiseVar_(noise_var)
-//     {
-//         transModel_(0,0) = 1;
-//         transModel_(1,1) = 1;
-//         transModel_(2,2) = 1;
-//     };
-
-//     // Construct from yaml input
-//     ConstPos(std::vector<double> const noise_var) 
-//     {
-//         for (int32_t ii =0; ii< noise_var.size(); ++ii) {
-//             transNoiseVar_(ii) = noise_var[ii];
-//         };
-//     };
-
-//     // Accessors
-//     gtsam::Matrix TransModel()
-//     {
-//         return transModel_;
-//     }
-
-//     gtsam::Vector6 TransVar()
-//     {
-//         return transNoiseVar_;
-//     }
-
-//     gtsam::SharedDiagonal TransCov()
-//     {
-//         return transNoiseCov_;
-//     }
-
-//     gtsam::Matrix InputModel()
-//     {
-//         return inputModel_;
-//     }
-
-//     gtsam::Vector6 Input()
-//     {
-//         return input_;
-//     }
-
-//     // Mutators
-//     void UpdateTrans(double dt)
-//     {} // This is a placeholder since ConstPos doesn't need to update the trans
-
-//     private:
-//     gtsam::Vector6 transNoiseVar_; //= gtsam::Vector(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441);
-//     gtsam::SharedDiagonal transNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(transNoiseVar_); // "Q" matrix
-//     gtsam::Matrix transModel_ = gtsam::Matrix::Zero(6,6); // "F" matrix
-//     const gtsam::Matrix inputModel_ = gtsam::Matrix::Zero(6,6); // "B" matrix
-//     const gtsam::Vector6 input_ = gtsam::Vector::Zero(6); // "u" vector
-
-// }; // ConstPos class
-
-
-// class ConstVel 
-// {
-//     public:
-//     // Default Constructor
-//     ConstVel()
-//     {
-//         transNoiseVar_= gtsam::Vector6(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441);
-//     };
-
-//     // Construct from input vector
-//     ConstVel(gtsam::Vector6 noise_var) : transNoiseVar_(noise_var) {};
-
-//     // Construct from yaml input
-//     ConstVel(std::vector<double> const noise_var) 
-//     {
-//         for (int32_t ii =0; ii< noise_var.size(); ++ii) {
-//             transNoiseVar_(ii) = noise_var[ii];
-//         };
-//     };
-
-//     // Accessors
-//     gtsam::Matrix TransModel()
-//     {
-//         return transModel_;
-//     }
-
-//     gtsam::Vector6 TransVar()
-//     {
-//         return transNoiseVar_;
-//     }
-
-//     gtsam::SharedDiagonal TransCov()
-//     {
-//         return transNoiseCov_;
-//     }
-
-//     gtsam::Matrix InputModel()
-//     {
-//         return inputModel_;
-//     }
-
-//     gtsam::Vector6 Input()
-//     {
-//         return input_;
-//     }
-
-//     // Mutators
-//     void TransModel(double dt)
-//     {
-//         transModel_(0,3) = dt;
-//         transModel_(1,4) = dt;
-//         transModel_(2,5) = dt;
-//     }
-    
-//     void TransCov(double dt)
-//     {
-//         this->transNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector6(transNoiseVar_(0)*pow(dt,2),
-//                                                           transNoiseVar_(1)*pow(dt,2),
-//                                                           transNoiseVar_(2)*pow(dt,2),
-//                                                           transNoiseVar_(3)*dt,
-//                                                           transNoiseVar_(4)*dt,
-//                                                           transNoiseVar_(5)*dt));
-//     }
-
-//     void UpdateTrans(double dt)
-//     {
-//         TransModel(dt);
-//         TransCov(dt);
-//     }
-
-//     private:
-//     gtsam::Vector6 transNoiseVar_; //= gtsam::Vector(135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441);
-//     gtsam::SharedDiagonal transNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(transNoiseVar_); // "Q" matrix
-//     gtsam::Matrix transModel_ = gtsam::Matrix::Identity(6,6); // "F" matrix
-//     const gtsam::Matrix inputModel_ = gtsam::Matrix::Zero(6,6); // "B" matrix
-//     const gtsam::Vector6 input_ = gtsam::Vector::Zero(6); // "u" vector
-
-// }; // ConstVel class
 
 #endif
