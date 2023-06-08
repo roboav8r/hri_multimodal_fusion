@@ -50,18 +50,30 @@ class SpatialTransition
 
 };
 
+struct MotionTransition;
+
 }; // TransitionModels namespace
 
 /*
 Definitions
 */
 
+// Structure containing Motion model data
+struct TransitionModels::MotionTransition
+{
+    gtsam::DiscreteConditional Conditional;
+    gtsam::DiscreteKey PriorMotion, PredictedMotion;
+
+    //std::vector<gtsam::DiscreteKey> MotionKeys;
+
+};
+
 // Structure containing all transition model data
 struct TransitionModels::TransModelParams
 {
     size_t nModels;
-    std::vector<TransitionModels::SpatialTransition> SpatialTransModels;
-    std::vector<gtsam::DiscreteConditional> MotionTransModels;
+    std::vector<TransitionModels::SpatialTransition> SpatialTrans;
+    TransitionModels::MotionTransition MotionTrans;
     std::vector<std::string> MotionLabels;
 };
 
@@ -78,7 +90,7 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
     n.getParam(param_ns,paramMap);
     params.nModels = paramMap.size();
 
-    // Assign spatial transition models, motion transition models, and labels
+    // Assign spatial transition models and motion labels/keys
     for (auto it = paramMap.begin(); it != paramMap.end(); it++)
     {
         motionLabel = it->first;
@@ -89,11 +101,15 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
         n.getParam(param_ns + "/" + motionLabel + "/type",typeIndex);
         type = static_cast<TransitionModels::SpatialTransType>(typeIndex);
         TransitionModels::SpatialTransition trans(type, sigma);
-        params.SpatialTransModels.push_back(trans);
-
-        // Get discrete conditionals for motion mode transition, then store
-        //params.MotionTransModels.push_back(gtsam::DiscreteConditional(A | ));
+        params.SpatialTrans.push_back(trans);
     }
+
+    // Assign motion keys
+    params.MotionTrans.PredictedMotion = gtsam::DiscreteKey(0, params.nModels);
+    params.MotionTrans.PriorMotion = gtsam::DiscreteKey(1, params.nModels);
+
+    // Assign motion transition models/conditional distribution
+    gtsam::DiscreteConditional cond(params.MotionTrans.PredictedMotion, {params.MotionTrans.PriorMotion}, ".7/.3 .3/.7"); // TODO make table or string programmatically
 
     return params;
 };
@@ -106,18 +122,18 @@ void TransitionModels::PrintTransModelParams(TransitionModels::TransModelParams 
     for (size_t ii=0; ii<params.nModels; ++ii) {
         std::cout << "Spatial Transition Model: " << ii << std::endl;
         std::cout << "Label: " << params.MotionLabels[ii] << std::endl;
-        std::cout << "Type: " << (TransitionModels::SpatialTransType)params.SpatialTransModels[ii].ModelType() << std::endl;
+        std::cout << "Type: " << (TransitionModels::SpatialTransType)params.SpatialTrans[ii].ModelType() << std::endl;
         std::cout << "Transition Matrix: " << std::endl;
-        std::cout << params.SpatialTransModels[ii].TransModel() << std::endl;
+        std::cout << params.SpatialTrans[ii].TransModel() << std::endl;
         std::cout << "Transition Variance Vector: " << std::endl;
-        std::cout << params.SpatialTransModels[ii].TransVar() << std::endl;
+        std::cout << params.SpatialTrans[ii].TransVar() << std::endl;
         std::cout << "Transition Covariance Matrix: " << std::endl;
-        // gtsam::noiseModel::Diagonal tc = (*params.SpatialTransModels[ii].TransCov()); // TODO - how tho
+        // gtsam::noiseModel::Diagonal tc = (*params.SpatialTrans[ii].TransCov()); // TODO - how tho
         //tc.print;
         std::cout << "Input model: " << std::endl;
-        std::cout << params.SpatialTransModels[ii].InputModel() << std::endl;
+        std::cout << params.SpatialTrans[ii].InputModel() << std::endl;
         std::cout << "Input: " << std::endl;
-        std::cout << params.SpatialTransModels[ii].Input() << std::endl << std::endl;
+        std::cout << params.SpatialTrans[ii].Input() << std::endl << std::endl;
     };
 };
 

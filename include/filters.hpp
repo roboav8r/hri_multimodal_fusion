@@ -98,10 +98,10 @@ class InferenceFilter
         {
 
             this->state_.Spatial[ii] = kfs_[ii].predict(this->state_.Spatial[ii],
-                                                        this->transModelParams_.SpatialTransModels[ii].TransModel(),
-                                                        this->transModelParams_.SpatialTransModels[ii].InputModel(),
-                                                        this->transModelParams_.SpatialTransModels[ii].Input(),
-                                                        this->transModelParams_.SpatialTransModels[ii].TransCov());
+                                                        this->transModelParams_.SpatialTrans[ii].TransModel(),
+                                                        this->transModelParams_.SpatialTrans[ii].InputModel(),
+                                                        this->transModelParams_.SpatialTrans[ii].Input(),
+                                                        this->transModelParams_.SpatialTrans[ii].TransCov());
             this->kfs_[ii].print("Predicted state for model " + ii);
 
         };
@@ -142,7 +142,7 @@ class InferenceFilter
 
             // Update state transition model based on dt_
             for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
-                this->transModelParams_.SpatialTransModels[ii].UpdateTrans(this->dt_);
+                this->transModelParams_.SpatialTrans[ii].UpdateTrans(this->dt_);
             };
 
             // Do a prediction/propagation step
@@ -196,9 +196,9 @@ class InferenceFilter
                     gtsam::Vector6 variance(this->oakDSensor_.NoiseVar()(0),
                                         this->oakDSensor_.NoiseVar()(1),
                                         this->oakDSensor_.NoiseVar()(2),
-                                        this->transModelParams_.SpatialTransModels[ii].TransVar()(3),
-                                        this->transModelParams_.SpatialTransModels[ii].TransVar()(4),
-                                        this->transModelParams_.SpatialTransModels[ii].TransVar()(5));
+                                        this->transModelParams_.SpatialTrans[ii].TransVar()(3),
+                                        this->transModelParams_.SpatialTrans[ii].TransVar()(4),
+                                        this->transModelParams_.SpatialTrans[ii].TransVar()(5));
                     // std::cout << ii << std::endl;
                     // std::cout << variance << std::endl;
 
@@ -207,7 +207,7 @@ class InferenceFilter
                         gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
                         gtsam::noiseModel::Diagonal::Sigmas(variance));
 
-                    // std::cout << this->transModelParams_.SpatialTransModels[ii].TransCov()->sigmas() << std::endl;
+                    // std::cout << this->transModelParams_.SpatialTrans[ii].TransCov()->sigmas() << std::endl;
                     this->kfs_[ii].print();
                 };
 

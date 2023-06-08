@@ -9,8 +9,7 @@ class ObjectState
         {
             MotionKey = gtsam::DiscreteKey(0, n_models);
             std::vector<double> MotionVec(n_models, (double)1/n_models);
-            Motion = gtsam::DiscreteDistribution(MotionKey, MotionVec);
-            Motion.print("Object motion probability prior:");
+            MotionType = gtsam::DiscreteDistribution(MotionKey, MotionVec);
         };
 
     // Spatial state
@@ -18,7 +17,6 @@ class ObjectState
 
     // Motion/activity state
     gtsam::DiscreteKey MotionKey;
-    gtsam::DiscreteDistribution Motion;
-    std::vector<gtsam::DiscreteKey> PredictMotionKeys;
-    gtsam::DecisionTreeFactor JointMotion;
+    gtsam::DiscreteConditional PredictedMotion;
+    gtsam::DiscreteDistribution MotionType;
 };
