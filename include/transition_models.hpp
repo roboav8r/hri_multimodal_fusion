@@ -3,6 +3,7 @@
 
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
+#include <gtsam/discrete/DiscreteDistribution.h>
 
 namespace TransitionModels {
 
@@ -17,7 +18,7 @@ enum SpatialTransType
 
 struct TransModelParams;
 
-TransModelParams ExtractTransModelParams(std::string, ros::NodeHandle);
+TransModelParams ExtractTransModelParams(std::string, ros::NodeHandle&);
 void PrintTransModelParams(TransModelParams);
 
 class SpatialTransition
@@ -60,12 +61,12 @@ struct TransitionModels::TransModelParams
 {
     size_t nModels;
     std::vector<TransitionModels::SpatialTransition> SpatialTransModels;
-    //std::vector<TransitionModels::MotionTransition> MotionTransModels;
+    std::vector<gtsam::DiscreteConditional> MotionTransModels;
     std::vector<std::string> MotionLabels;
 };
 
 // Helper function to extract transition model params from ros param path
-TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std::string param_ns, ros::NodeHandle n)
+TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std::string param_ns, ros::NodeHandle& n)
 {
     TransModelParams params;
     std::string motionLabel;
@@ -89,6 +90,9 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
         type = static_cast<TransitionModels::SpatialTransType>(typeIndex);
         TransitionModels::SpatialTransition trans(type, sigma);
         params.SpatialTransModels.push_back(trans);
+
+        // Get discrete conditionals for motion mode transition, then store
+        //params.MotionTransModels.push_back(gtsam::DiscreteConditional(A | ));
     }
 
     return params;

@@ -120,12 +120,11 @@ class InferenceFilter
                                                        this->oakDSensor_.MeasModel(), 
                                                        this->oakDMeas_, 
                                                        this->oakDSensor_.NoiseCov());
-            auto loopstate = *(this->state_.Spatial[ii]);
-            loopstate.print();
+            // auto loopstate = *(this->state_.Spatial[ii]);
+            // loopstate.print();
 
         };
-        // this->state_.Spatial = kf_.update(this->state_.Spatial, this->oakDSensor_.MeasModel(), this->oakDMeas_, this->oakDSensor_.NoiseCov());
-    
+        
         // TODO update activity state
     }
 
