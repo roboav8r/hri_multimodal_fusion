@@ -1,10 +1,10 @@
 transition:
     standing: #activity label/name
         type: 0 # constant position
-        sigma: [135.688255, 98.0265414, 395.476227, 0., 0., 0.]
+        sigma: [135.688255, 98.0265414, 395.476227,  0., 0., 0.]
         mode_trans: [.7, .3] # probability it will remain standing (0.7), or start moving (0.3)
 
     walking: #activity label/name - TODO for multiple models
         type: 1 # constant velocity
         sigma: [135.688255, 98.0265414, 395.476227, 0.100000196, 0.0999837353, 0.0997463441]
-        mode_trans: [.3, .7] # probability it will stand (0.3), or remain moving (0.7)
+        mode_trans: [.4, .6] # probability it will stand (0.3), or remain moving (0.7)

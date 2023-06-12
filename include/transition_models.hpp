@@ -50,7 +50,7 @@ class SpatialTransition
 
 };
 
-struct MotionTransition;
+// struct MotionTransition;
 
 }; // TransitionModels namespace
 
@@ -58,22 +58,23 @@ struct MotionTransition;
 Definitions
 */
 
-// Structure containing Motion model data
-struct TransitionModels::MotionTransition
-{
-    gtsam::DiscreteConditional Conditional;
-    gtsam::DiscreteKey PriorMotion, PredictedMotion;
+// // Structure containing Motion model data
+// struct TransitionModels::MotionTransition
+// {
+//     gtsam::DiscreteConditional Conditional;
+//     gtsam::DiscreteKey PriorMotion, PredictedMotion;
 
-    //std::vector<gtsam::DiscreteKey> MotionKeys;
+//     //std::vector<gtsam::DiscreteKey> MotionKeys;
 
-};
+// };
 
 // Structure containing all transition model data
 struct TransitionModels::TransModelParams
 {
     size_t nModels;
     std::vector<TransitionModels::SpatialTransition> SpatialTrans;
-    TransitionModels::MotionTransition MotionTrans;
+    // TransitionModels::MotionTransition MotionTrans;
+    gtsam::Matrix MotionTrans;
     std::vector<std::string> MotionLabels;
 };
 
@@ -86,9 +87,13 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
     std::vector<double> sigma;
     int typeIndex;
     TransitionModels::SpatialTransType type;
+    std::vector<double> modeTrans;
 
+    // Get number of motion models
     n.getParam(param_ns,paramMap);
     params.nModels = paramMap.size();
+
+
 
     // Assign spatial transition models and motion labels/keys
     for (auto it = paramMap.begin(); it != paramMap.end(); it++)
@@ -102,14 +107,31 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
         type = static_cast<TransitionModels::SpatialTransType>(typeIndex);
         TransitionModels::SpatialTransition trans(type, sigma);
         params.SpatialTrans.push_back(trans);
+
     }
 
-    // Assign motion keys
-    params.MotionTrans.PredictedMotion = gtsam::DiscreteKey(0, params.nModels);
-    params.MotionTrans.PriorMotion = gtsam::DiscreteKey(1, params.nModels);
+    // Generate motion transition model
+    // Initialize transition matrix model
+    params.MotionTrans = gtsam::Matrix(params.nModels,params.nModels);
+    for (size_t ii=0; ii<params.nModels; ii++) // Column iterator
+    {
+        // Get transition probabilities for this motion model
+        n.getParam(param_ns + "/" + params.MotionLabels[ii] + "/mode_trans",modeTrans);
+        for (size_t jj=0; jj<params.nModels; jj++) // Row iterator
+        {
+            params.MotionTrans(jj,ii) = modeTrans[jj];
+        }
+        
+        // TODO normalize columns
+    };
+
+
+    // params.MotionTrans.PredictedMotion = gtsam::DiscreteKey(0, params.nModels);
+    // params.MotionTrans.PriorMotion = gtsam::DiscreteKey(1, params.nModels);
 
     // Assign motion transition models/conditional distribution
-    gtsam::DiscreteConditional cond(params.MotionTrans.PredictedMotion, {params.MotionTrans.PriorMotion}, ".7/.3 .3/.7"); // TODO make table or string programmatically
+    // gtsam::Signature sig(params.MotionTrans.PredictedMotion, {params.MotionTrans.PriorMotion}, "7/3 4/6");
+    // gtsam::DiscreteConditional cond(sig); // TODO make table or string programmatically
 
     return params;
 };
@@ -145,6 +167,8 @@ TransitionModels::SpatialTransition::SpatialTransition(TransitionModels::Spatial
     for (size_t ii =0; ii< noise_var.size(); ++ii) {
         this->transNoiseVar_(ii) = noise_var[ii];
     };
+
+    this->transNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(this->transNoiseVar_);
 
     switch(this->type_)
     {

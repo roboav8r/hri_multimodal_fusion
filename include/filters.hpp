@@ -96,19 +96,22 @@ class InferenceFilter
         // Predict for multiple models
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
+            //std::cout << "TransModel: " << this->transModelParams_.SpatialTrans[ii].TransModel() << std::endl;
+            // this->transModelParams_.SpatialTrans[ii].TransCov()->print("TransCov: ");
 
             this->state_.Spatial[ii] = kfs_[ii].predict(this->state_.Spatial[ii],
                                                         this->transModelParams_.SpatialTrans[ii].TransModel(),
                                                         this->transModelParams_.SpatialTrans[ii].InputModel(),
                                                         this->transModelParams_.SpatialTrans[ii].Input(),
                                                         this->transModelParams_.SpatialTrans[ii].TransCov());
-            this->kfs_[ii].print("Predicted state for model " + ii);
+            // this->kfs_[ii].print("Predicted state for model " + ii);
 
         };
-        // TODO predict activity state
-        this->state_.MotionType.print("Predict 1");
-        //this->transModelParams_.MotionTrans.Conditional.print("conditional");
-        // Set 
+
+        // Predict activity state
+        std::cout << "Motion prediction: " << std::endl;
+        this->state_.Motion = this->transModelParams_.MotionTrans*this->state_.Motion;
+        std::cout << this->state_.Motion << std::endl;
         
     }
 
@@ -118,14 +121,18 @@ class InferenceFilter
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
             std::cout << "Spatial state " << ii << ": " << std::endl;
-
+            auto l = this->state_.Spatial[ii]->likelihood(this->oakDMeas_);
+            l->print("likelihood:");
+            std::cout << l->error << std::endl;
 
             this->state_.Spatial[ii] = kfs_[ii].update(this->state_.Spatial[ii],
                                                        this->oakDSensor_.MeasModel(), 
                                                        this->oakDMeas_, 
                                                        this->oakDSensor_.NoiseCov());
-            // auto loopstate = *(this->state_.Spatial[ii]);
-            // loopstate.print();
+
+            // TODO how well does this measurement match the prediction?
+            // i.e. Compute likelihood of this measurement with this model
+            
 
         };
         
@@ -142,7 +149,7 @@ class InferenceFilter
             this->last_t_ = t_;
             this->t_ = msg->header.stamp;
             this->dt_ = (this->t_ - this->last_t_).toSec();
-            std::cout<<this->dt_<<std::endl;
+            // std::cout<<this->dt_<<std::endl;
 
             // Update state transition model based on dt_
             for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
@@ -164,7 +171,7 @@ class InferenceFilter
                 Update();
             }
 
-            std::cout << "Update done" << std::endl;
+            // std::cout << "Update done" << std::endl;
 
             // TODO find maximum likelihood index
             int8_t motionModelInd = 0;
@@ -176,7 +183,7 @@ class InferenceFilter
             // objectMsg_.header.stamp = this->t_;
             // trackPub_.publish(objectMsg_);
 
-            std::cout << "Publishing done" << std::endl;
+            // std::cout << "Publishing done" << std::endl;
 
 
         } else {
@@ -212,7 +219,7 @@ class InferenceFilter
                         gtsam::noiseModel::Diagonal::Sigmas(variance));
 
                     // std::cout << this->transModelParams_.SpatialTrans[ii].TransCov()->sigmas() << std::endl;
-                    this->kfs_[ii].print();
+                    // this->kfs_[ii].print();
                 };
 
                 this->initialized_ = true;
