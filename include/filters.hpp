@@ -106,12 +106,16 @@ class InferenceFilter
 
         };
         // TODO predict activity state
+        this->state_.MotionType.print("Predict 1");
+        //this->transModelParams_.MotionTrans.Conditional.print("conditional");
+        // Set 
+        
     }
 
     void Update()
     {
         // Update spatial state for multiple models
-                for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
+        for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
             std::cout << "Spatial state " << ii << ": " << std::endl;
 
