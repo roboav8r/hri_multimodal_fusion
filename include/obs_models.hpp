@@ -30,6 +30,7 @@ class OakDSensor
         for (int32_t ii =0; ii< sensor_var.size(); ++ii) {
             oakDNoiseVar_(ii) = sensor_var[ii];
         };
+        oakDNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(oakDNoiseVar_);
     };
 
     // Accessors
@@ -50,7 +51,7 @@ class OakDSensor
     private:
     const gtsam::Matrix oakDMeasModel_ = (gtsam::Matrix(3,6)<< 1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0).finished();
     gtsam::Vector3 oakDNoiseVar_;
-    const gtsam::SharedDiagonal oakDNoiseCov_;
+    gtsam::SharedDiagonal oakDNoiseCov_;
 };
 
 enum ClutterType

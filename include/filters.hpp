@@ -1,6 +1,7 @@
 #ifndef FILTERS_H
 #define FILTERS_H
 
+#include <math.h>
 #include <ros/ros.h>
 
 #include "state.hpp"
@@ -35,6 +36,15 @@ FilterParams ExtractFilterParams(std::string param_ns, ros::NodeHandle n)
     return params;
 };
 
+// Compute likelihood
+
+double Likelihood(gtsam::Vector z, gtsam::Matrix C, gtsam::Vector x, gtsam::Matrix R)
+{
+    gtsam::Matrix err = z - C*x;
+    return exp((-0.5*(err.transpose()*R*err)).mean()); 
+
+}
+
 // Helper function to convert GTSAM output to ROS message
 void FormatObjectMsg(gtsam::KalmanFilter::State& state, hri_multimodal_fusion::TrackedObject& msg)
 {
@@ -66,17 +76,7 @@ void FormatObjectMsg(gtsam::KalmanFilter::State& state, hri_multimodal_fusion::T
 class InferenceFilter
 {
     public:
-    // // Default Constructor with parameters
-    // InferenceFilter(FilterParams par, Sensors::Clutter3D clutter_model) 
-    //     : params_(par), clutterModel_(clutter_model) {};
-
-    // // Construct with motion model
-    // // TODO update for multiple motion models
-    // InferenceFilter(FilterParams par, TransitionModels::ConstVelMotion cv_mot, Sensors::Clutter3D clutter_model) 
-    //     : params_(par), motionModel_(cv_mot), clutterModel_(clutter_model) {};
-
     // Construct with motion and obs models
-    // TODO update for multiple motion models
     InferenceFilter(ros::NodeHandle nh, FilterParams filt_par, TransitionModels::TransModelParams trans_par, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
         : nh_(nh), filtParams_(filt_par), transModelParams_(trans_par), state_(trans_par.nModels), oakDSensor_(oak_d), clutterModel_(clutter_model) 
         {
@@ -96,22 +96,17 @@ class InferenceFilter
         // Predict for multiple models
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
-            //std::cout << "TransModel: " << this->transModelParams_.SpatialTrans[ii].TransModel() << std::endl;
-            // this->transModelParams_.SpatialTrans[ii].TransCov()->print("TransCov: ");
 
             this->state_.Spatial[ii] = kfs_[ii].predict(this->state_.Spatial[ii],
                                                         this->transModelParams_.SpatialTrans[ii].TransModel(),
                                                         this->transModelParams_.SpatialTrans[ii].InputModel(),
                                                         this->transModelParams_.SpatialTrans[ii].Input(),
                                                         this->transModelParams_.SpatialTrans[ii].TransCov());
-            // this->kfs_[ii].print("Predicted state for model " + ii);
 
         };
 
         // Predict activity state
-        std::cout << "Motion prediction: " << std::endl;
         this->state_.Motion = this->transModelParams_.MotionTrans*this->state_.Motion;
-        std::cout << this->state_.Motion << std::endl;
         
     }
 
@@ -120,23 +115,21 @@ class InferenceFilter
         // Update spatial state for multiple models
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
-            std::cout << "Spatial state " << ii << ": " << std::endl;
-            auto l = this->state_.Spatial[ii]->likelihood(this->oakDMeas_);
-            l->print("likelihood:");
-            std::cout << l->error << std::endl;
+            // Compute Likelihood of this measurement with the predicted model
+            this->state_.Likelihood[ii] = Likelihood(this->oakDMeas_, this->oakDSensor_.MeasModel(), this->state_.Spatial[ii]->mean(), this->oakDSensor_.NoiseCov()->R());
 
+            // Perform update step
             this->state_.Spatial[ii] = kfs_[ii].update(this->state_.Spatial[ii],
                                                        this->oakDSensor_.MeasModel(), 
                                                        this->oakDMeas_, 
                                                        this->oakDSensor_.NoiseCov());
 
-            // TODO how well does this measurement match the prediction?
-            // i.e. Compute likelihood of this measurement with this model
-            
-
         };
         
-        // TODO update activity state
+        // Update motion state based on likelihood, then normalize Motion probabilities
+        for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
+        { this->state_.Motion(ii,1) *= this->state_.Likelihood(ii,1);} 
+        this->state_.Motion /= this->state_.Motion.sum();
     }
 
     void OakDUpdate(const depthai_ros_msgs::SpatialDetectionArray::ConstPtr& msg)
@@ -149,7 +142,6 @@ class InferenceFilter
             this->last_t_ = t_;
             this->t_ = msg->header.stamp;
             this->dt_ = (this->t_ - this->last_t_).toSec();
-            // std::cout<<this->dt_<<std::endl;
 
             // Update state transition model based on dt_
             for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
@@ -167,11 +159,8 @@ class InferenceFilter
                 for (depthai_ros_msgs::SpatialDetection det : msg->detections) {
                     this->oakDMeas_ = {det.position.x, det.position.y, det.position.z};
                 }
-
                 Update();
             }
-
-            // std::cout << "Update done" << std::endl;
 
             // TODO find maximum likelihood index
             int8_t motionModelInd = 0;
@@ -183,8 +172,7 @@ class InferenceFilter
             // objectMsg_.header.stamp = this->t_;
             // trackPub_.publish(objectMsg_);
 
-            // std::cout << "Publishing done" << std::endl;
-
+            // std::cout << "Publishing done" << std::endl;7
 
         } else {
             ROS_INFO("Filter NOT initialized");
@@ -210,18 +198,12 @@ class InferenceFilter
                                         this->transModelParams_.SpatialTrans[ii].TransVar()(3),
                                         this->transModelParams_.SpatialTrans[ii].TransVar()(4),
                                         this->transModelParams_.SpatialTrans[ii].TransVar()(5));
-                    // std::cout << ii << std::endl;
-                    // std::cout << variance << std::endl;
 
                     
                     this->state_.Spatial[ii] = this->kfs_[ii].init(
                         gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
                         gtsam::noiseModel::Diagonal::Sigmas(variance));
-
-                    // std::cout << this->transModelParams_.SpatialTrans[ii].TransCov()->sigmas() << std::endl;
-                    // this->kfs_[ii].print();
                 };
-
                 this->initialized_ = true;
             }
         }

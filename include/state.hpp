@@ -12,6 +12,9 @@ class ObjectState
             // MotionType = gtsam::DiscreteDistribution(MotionKey, MotionVec);
             Motion = gtsam::Matrix::Ones(n_models, 1);
             Motion = Motion/n_models; // Assume uniform distribution of motion probabilities
+
+            Likelihood = gtsam::Vector::Ones(n_models);
+            Likelihood = Likelihood/n_models; // Assume uniform distribution of motion probabilities
         };
 
     // Spatial state
@@ -22,4 +25,5 @@ class ObjectState
     // gtsam::DiscreteConditional PredictedMotion;
     // gtsam::DiscreteDistribution MotionType;
     gtsam::Matrix Motion;
+    gtsam::Vector Likelihood;
 };
