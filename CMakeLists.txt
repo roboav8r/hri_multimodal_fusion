@@ -48,6 +48,7 @@ add_service_files(
 ## Generate added messages and services
 generate_messages(
     DEPENDENCIES
+    std_msgs
     geometry_msgs 
     hri_multimodal_fusion
 )

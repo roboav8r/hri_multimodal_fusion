@@ -42,14 +42,11 @@ double Likelihood(gtsam::Vector z, gtsam::Matrix C, gtsam::Vector x, gtsam::Matr
 {
     gtsam::Matrix err = z - C*x;
     return exp((-0.5*(err.transpose()*R*err)).mean()); 
-
 }
 
 // Helper function to convert GTSAM output to ROS message
 void FormatObjectMsg(gtsam::KalmanFilter::State& state, hri_multimodal_fusion::TrackedObject& msg)
 {
-    // TODO: Get most likely activity index
-    int8_t motionModelInd = 0;
     
     // Update pose & covariance
     msg.pose.pose.position.x=state->mean()[0];
@@ -82,6 +79,11 @@ class InferenceFilter
         {
             trackPub_ = nh_.advertise<hri_multimodal_fusion::TrackedObject>("tracks",10);
             objectMsg_.header.frame_id = filtParams_.FrameId;
+            for (int ii=0; ii<transModelParams_.nModels; ii++)
+            {
+                objectMsg_.activity_labels.push_back(transModelParams_.MotionLabels[ii]);
+            }
+            objectMsg_.activity_confidences.resize(transModelParams_.nModels);
         };
 
 
@@ -128,7 +130,7 @@ class InferenceFilter
         
         // Update motion state based on likelihood, then normalize Motion probabilities
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
-        { this->state_.Motion(ii,1) *= this->state_.Likelihood(ii,1);} 
+        { this->state_.Motion(ii,0) *= this->state_.Likelihood(ii,0);} 
         this->state_.Motion /= this->state_.Motion.sum();
     }
 
@@ -162,17 +164,27 @@ class InferenceFilter
                 Update();
             }
 
-            // TODO find maximum likelihood index
+            // Find maximum likelihood index
             int8_t motionModelInd = 0;
+            float motionConf = 0.0;
+            for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
+                objectMsg_.activity_confidences[ii] = this->state_.Motion(ii,0);
+                if (this->state_.Motion(ii,0) > motionConf)
+                {
+                    motionConf = this->state_.Motion(ii,0);
+                    motionModelInd = ii;
+                }
+            };
 
             // Publish/output current state
-            // TODO only publish most likely state
             // state_.Spatial[motionModelInd]->print("State");
-            // FormatObjectMsg(state_.Spatial[motionModelInd], objectMsg_);
-            // objectMsg_.header.stamp = this->t_;
-            // trackPub_.publish(objectMsg_);
+            FormatObjectMsg(state_.Spatial[motionModelInd], objectMsg_);
+            objectMsg_.header.stamp = this->t_;
+            objectMsg_.activity = this->transModelParams_.MotionLabels[motionModelInd];
+            objectMsg_.activity_confidence = motionConf;
+            trackPub_.publish(objectMsg_);
 
-            // std::cout << "Publishing done" << std::endl;7
+            // std::cout << "Publishing done" << std::endl;
 
         } else {
             ROS_INFO("Filter NOT initialized");

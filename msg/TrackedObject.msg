@@ -1,3 +1,7 @@
-std_msgs/Header  header
+Header  header
 geometry_msgs/PoseWithCovariance pose
 geometry_msgs/TwistWithCovariance twist
+string[] activity_labels
+float64[] activity_confidences
+string activity
+float64 activity_confidence
