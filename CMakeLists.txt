@@ -13,13 +13,23 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt5 ${rviz_QT_VERSION} REQUIRED Core Widgets)
 set(QT_LIBRARIES Qt5::Widgets)
 
+include($ENV{ROS_ROOT}/core/rosbuild/FindPkgConfig.cmake)
+pkg_check_modules(OGRE OGRE)
+include_directories( ${OGRE_INCLUDE_DIRS} )
+link_directories( ${OGRE_LIBRARY_DIRS} )
 
-set(SRC_FILES
-  src/hri_humans.cpp
-  src/hri_skeletons.cpp
-  src/hri_tf.cpp
+qt5_wrap_cpp(MOC_FILES
+  src/tracked_object_display.h
+  src/tracked_object_visual.h
 )
 
+set(SRC_FILES
+  src/tracked_object_display.cpp
+  src/tracked_object_visual.cpp
+  ${MOC_FILES}
+)
+
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 add_library(${PROJECT_NAME} ${SRC_FILES})
 
 
@@ -78,7 +88,7 @@ catkin_package(
 )
 
 
-target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OGRE_LIBRARIES})
 
 add_executable(cal_graph src/cal_graph.cpp)
 target_include_directories(cal_graph
