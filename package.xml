@@ -36,7 +36,7 @@
   <depend>cv_bridge</depend>
   <depend>std_msgs</depend>
   <depend>image_transport</depend>
-  <depend>ros_openpose</depend>
+  <depend>rviz</depend>
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
   <exec_depend>depthai_ros_msgs</exec_depend>
@@ -45,7 +45,7 @@
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
-
+    <rviz plugin="${prefix}/plugin_description.xml"/>
   </export>
+  
 </package>

@@ -1,0 +1,11 @@
+<library path="lib/libhri_multimodal_fusion">
+
+  <class name="multimodal_fusion_viz/TrackedObject"
+         type="rviz_plugin_tutorials::TrackedObjectDisplay"
+         base_class_type="rviz::Display">
+    <description>
+      Displays relevant spatial and semantic properties of hri_multimodal_fusion/TrackedObject messages.
+    </description>
+  </class>
+
+</library>

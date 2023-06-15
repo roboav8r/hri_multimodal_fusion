@@ -84,7 +84,7 @@ int main() {
         }
 
         // Add state estimates as variables, use OAK-D measurement as initial position value
-        initial.insert(state_symbol,gtsam::Vector6(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z,0,0,0));
+        initial.insert(state_symbol,gtsam::Vector6(det->detections[0].position.x,det->detections[0].position.y,det->detections[0].position.z,0.,0.,0.));
 
         // LOOP CONTROL - TODO remove after testing
         ++ii;
