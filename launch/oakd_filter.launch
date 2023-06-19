@@ -25,6 +25,7 @@
     <node name="inference_filter" pkg="hri_multimodal_fusion" type="inference_filter" output="screen"/>
 
     <!-- RViz visualization -->
-    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_multimodal_fusion)/rviz/$(arg config)_$(arg mode).rviz" if="$(arg visualization)"/> -->
+    <node name="tracked_object_viz" pkg="hri_multimodal_fusion" type="tracked_object_viz_node" output="screen" if="$(arg visualization)"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_multimodal_fusion)/config/$(arg config).rviz" if="$(arg visualization)"/>
 
 </launch>

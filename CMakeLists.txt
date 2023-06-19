@@ -4,33 +4,33 @@ project(hri_multimodal_fusion)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 
-# prevents a keyword clash between Qt and boost
-add_definitions(-DQT_NO_KEYWORDS)
+# # prevents a keyword clash between Qt and boost
+# add_definitions(-DQT_NO_KEYWORDS)
 
-## This setting causes Qt's "MOC" generation to happen automatically.
-set(CMAKE_AUTOMOC ON)
+# ## This setting causes Qt's "MOC" generation to happen automatically.
+# set(CMAKE_AUTOMOC ON)
 
-find_package(Qt5 ${rviz_QT_VERSION} REQUIRED Core Widgets)
-set(QT_LIBRARIES Qt5::Widgets)
+# find_package(Qt5 ${rviz_QT_VERSION} REQUIRED Core Widgets)
+# set(QT_LIBRARIES Qt5::Widgets)
 
-include($ENV{ROS_ROOT}/core/rosbuild/FindPkgConfig.cmake)
-pkg_check_modules(OGRE OGRE)
-include_directories( ${OGRE_INCLUDE_DIRS} )
-link_directories( ${OGRE_LIBRARY_DIRS} )
+# include($ENV{ROS_ROOT}/core/rosbuild/FindPkgConfig.cmake)
+# pkg_check_modules(OGRE OGRE)
+# include_directories( ${OGRE_INCLUDE_DIRS} )
+# link_directories( ${OGRE_LIBRARY_DIRS} )
 
-qt5_wrap_cpp(MOC_FILES
-  src/tracked_object_display.h
-  src/tracked_object_visual.h
-)
+# qt5_wrap_cpp(MOC_FILES
+#   src/tracked_object_display.h
+#   src/tracked_object_visual.h
+# )
 
-set(SRC_FILES
-  src/tracked_object_display.cpp
-  src/tracked_object_visual.cpp
-  ${MOC_FILES}
-)
+# set(SRC_FILES
+#   src/tracked_object_display.cpp
+#   src/tracked_object_visual.cpp
+#   ${MOC_FILES}
+# )
 
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-add_library(${PROJECT_NAME} ${SRC_FILES})
+# set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+# add_library(${PROJECT_NAME} ${SRC_FILES})
 
 
 ## Find catkin and any catkin packages
@@ -88,7 +88,7 @@ catkin_package(
 )
 
 
-target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OGRE_LIBRARIES})
+# target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OGRE_LIBRARIES})
 
 add_executable(cal_graph src/cal_graph.cpp)
 target_include_directories(cal_graph
@@ -150,13 +150,25 @@ target_link_libraries(oakd_train_node ${catkin_LIBRARIES})
 add_dependencies(oakd_train_node hri_multimodal_fusion_generate_messages_cpp)
 
 
-install(TARGETS
-  ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+add_executable(tracked_object_viz_node src/tracked_object_viz_node.cpp)
+target_include_directories(tracked_object_viz_node
+  PRIVATE
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${GTSAM_INCLUDE_DIRS}
+    ${GTSAM_UNSTABLE_INCLUDE_DIRS}
 )
+target_link_libraries(tracked_object_viz_node ${catkin_LIBRARIES})
+# add_dependencies(tracked_object_visualization )
 
-install(FILES
-  plugin_description.xml
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+# install(TARGETS
+#   ${PROJECT_NAME}
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
+
+# install(FILES
+#   plugin_description.xml
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

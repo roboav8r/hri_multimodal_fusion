@@ -1,4 +1,4 @@
-Header  header
+Header header
 geometry_msgs/PoseWithCovariance pose
 geometry_msgs/TwistWithCovariance twist
 string[] activity_labels

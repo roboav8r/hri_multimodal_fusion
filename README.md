@@ -52,4 +52,9 @@ https://gtsam-jlblanco-docs.readthedocs.io/en/latest/Overview.html
 # Improvements
 - Make template class for filters, transition models, sensor models based on number of spatial dimensions and derivatives
 - Make motion models and sensor models static
-- TODO make transition model TransitionModels::parser function to go from params to variables
+- Make transition model TransitionModels::parser function to go from params to variables
+
+Visualization
+- Performance improvements with marker array message
+- Convert visualization from marker publisher to rviz plugin
+- make topics parameters instead of fixed `/tracks`
