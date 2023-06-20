@@ -17,6 +17,14 @@ struct SensorParams
     double pDetect;
 };
 
+// TODO - remove SensorParams
+
+// TODO - make a generic sensor class
+
+// TODO - add p(Z|X) matrix for the sensor
+
+// TODO - ExtractSensorParams from .yaml
+
 class OakDSensor
 {
     public:

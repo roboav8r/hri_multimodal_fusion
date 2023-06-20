@@ -5,3 +5,8 @@ sensors:
     sigma: [34.0059364,25.9475303,54.9710593]
     p_d: 0.98
     q_d: 0.02
+
+    class_labels:
+        person:
+            meas_labels:    ["null", "person"]
+            meas_probabilities: [0.1, 0.9]

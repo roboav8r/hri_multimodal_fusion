@@ -17,8 +17,8 @@
 
 // Constants
 static Filters::FilterParams filterParams;
-// std::vector<double> motionVar;
 static TransitionModels::TransModelParams transModelParams;
+static Sensors::SensorParams sensorParams;
 
 std::string yoloTopic;
 std::vector<double> sensorVar;
