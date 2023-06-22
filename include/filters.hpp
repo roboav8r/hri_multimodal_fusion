@@ -74,8 +74,8 @@ class InferenceFilter
 {
     public:
     // Construct with motion and obs models
-    InferenceFilter(ros::NodeHandle nh, FilterParams filt_par, TransitionModels::TransModelParams trans_par, Sensors::OakDSensor oak_d, Sensors::Clutter3D clutter_model) 
-        : nh_(nh), filtParams_(filt_par), transModelParams_(trans_par), state_(trans_par.nModels), oakDSensor_(oak_d), clutterModel_(clutter_model) 
+    InferenceFilter(ros::NodeHandle nh, FilterParams filt_par, TransitionModels::TransModelParams trans_par, Sensors::ObsModelParams obs_par, Sensors::Clutter3D clutter_model) 
+        : nh_(nh), filtParams_(filt_par), transModelParams_(trans_par), state_(trans_par.nModels, obs_par.ClassLabels.size()), obsModelParams_(obs_par), clutterModel_(clutter_model) 
         {
             trackPub_ = nh_.advertise<hri_multimodal_fusion::TrackedObject>("tracks",10);
             objectMsg_.header.frame_id = filtParams_.FrameId;
@@ -85,7 +85,6 @@ class InferenceFilter
             }
             objectMsg_.activity_confidences.resize(transModelParams_.nModels);
         };
-
 
     // Accessors
     ObjectState State() {
@@ -118,13 +117,13 @@ class InferenceFilter
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
             // Compute Likelihood of this measurement with the predicted model
-            this->state_.Likelihood[ii] = Likelihood(this->oakDMeas_, this->oakDSensor_.MeasModel(), this->state_.Spatial[ii]->mean(), this->oakDSensor_.NoiseCov()->R());
+            this->state_.Likelihood[ii] = Likelihood(this->meas_, this->obsModelParams_.SensorMdl.MeasModel(), this->state_.Spatial[ii]->mean(), this->obsModelParams_.SensorMdl.NoiseCov()->R());
 
             // Perform update step
             this->state_.Spatial[ii] = kfs_[ii].update(this->state_.Spatial[ii],
-                                                       this->oakDSensor_.MeasModel(), 
-                                                       this->oakDMeas_, 
-                                                       this->oakDSensor_.NoiseCov());
+                                                       this->obsModelParams_.SensorMdl.MeasModel(), 
+                                                       this->meas_, 
+                                                       this->obsModelParams_.SensorMdl.NoiseCov());
 
         };
         
@@ -134,7 +133,7 @@ class InferenceFilter
         this->state_.Motion /= this->state_.Motion.sum();
     }
 
-    void OakDUpdate(const depthai_ros_msgs::SpatialDetectionArray::ConstPtr& msg)
+    void OakDCallback(const depthai_ros_msgs::SpatialDetectionArray::ConstPtr& msg)
     {
         ROS_INFO("Got detection msg");
 
@@ -159,7 +158,7 @@ class InferenceFilter
             if (msg->detections.size() !=0) {
 
                 for (depthai_ros_msgs::SpatialDetection det : msg->detections) {
-                    this->oakDMeas_ = {det.position.x, det.position.y, det.position.z};
+                    this->meas_ = {det.position.x, det.position.y, det.position.z};
                 }
                 Update();
             }
@@ -195,7 +194,7 @@ class InferenceFilter
                 t_ = msg->header.stamp;
 
                 for (depthai_ros_msgs::SpatialDetection det : msg->detections) {
-                    this->oakDMeas_ = {det.position.x, det.position.y, det.position.z};
+                    this->meas_ = {det.position.x, det.position.y, det.position.z};
                 }
                 
                 // Generate a KF object and a prior for each motion model
@@ -204,16 +203,16 @@ class InferenceFilter
 
                     this->kfs_.push_back(gtsam::KalmanFilter(6, gtsam::KalmanFilter::Factorization::QR));
 
-                    gtsam::Vector6 variance(this->oakDSensor_.NoiseVar()(0),
-                                        this->oakDSensor_.NoiseVar()(1),
-                                        this->oakDSensor_.NoiseVar()(2),
+                    gtsam::Vector6 variance(this->obsModelParams_.SensorMdl.NoiseVar()(0),
+                                        this->obsModelParams_.SensorMdl.NoiseVar()(1),
+                                        this->obsModelParams_.SensorMdl.NoiseVar()(2),
                                         this->transModelParams_.SpatialTrans[ii].TransVar()(3),
                                         this->transModelParams_.SpatialTrans[ii].TransVar()(4),
                                         this->transModelParams_.SpatialTrans[ii].TransVar()(5));
 
                     
                     this->state_.Spatial[ii] = this->kfs_[ii].init(
-                        gtsam::Vector6(this->oakDMeas_(0),this->oakDMeas_(1),this->oakDMeas_(2),0,0,0), 
+                        gtsam::Vector6(this->meas_(0),this->meas_(1),this->meas_(2),0,0,0), 
                         gtsam::noiseModel::Diagonal::Sigmas(variance));
                 };
                 this->initialized_ = true;
@@ -232,9 +231,11 @@ class InferenceFilter
     // State transition models
     TransitionModels::TransModelParams transModelParams_;
 
-    // GTSAM measurement models
-    gtsam::Vector3 oakDMeas_;
-    Sensors::OakDSensor oakDSensor_ = Sensors::OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
+    // measurement models
+    Sensors::ObsModelParams obsModelParams_;
+    gtsam::Vector3 meas_;
+    int measClassIdx_; // The index of the measurement label - used to update object class estimate
+    // Sensors::OakDSensor oakDSensor_ = Sensors::OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
 
     // ROS/loop control member variables
     ros::NodeHandle nh_;

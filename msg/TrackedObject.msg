@@ -7,5 +7,5 @@ string activity
 float64 activity_confidence
 string[] class_labels
 float64[] class_confidences
-string class
+string class_label
 float64 class_confidence

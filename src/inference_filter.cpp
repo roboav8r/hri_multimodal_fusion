@@ -18,10 +18,10 @@
 // Constants
 static Filters::FilterParams filterParams;
 static TransitionModels::TransModelParams transModelParams;
-static Sensors::SensorParams sensorParams;
+static Sensors::ObsModelParams sensorParams;
 
-std::string yoloTopic;
-std::vector<double> sensorVar;
+//std::string yoloTopic;
+//std::vector<double> sensorVar;
 
 int main(int argc, char **argv) {
 
@@ -37,14 +37,19 @@ int main(int argc, char **argv) {
     //TransitionModels::PrintTransModelParams(transModelParams);
 
     // Generate observation models from parameter file
-    nh.getParam("/sensors/topic", yoloTopic);
-    nh.getParam("/sensors/sigma",sensorVar);
-    static Sensors::OakDSensor oakdModel(sensorVar);
+    // nh.getParam("/sensors/topic", yoloTopic);
+    // nh.getParam("/sensors/sigma",sensorVar);
+    // static Sensors::OakDSensor oakdModel(sensorVar);
+    static Sensors::ObsModelParams obsParams = Sensors::ExtractSensorParams("sensors/",nh);
     static Sensors::Clutter3D oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
 
-    // Run the filter
-    Filters::InferenceFilter filter(nh, filterParams, transModelParams, oakdModel, oakdClutter);
-    ros::Subscriber yoloSub = nh.subscribe(yoloTopic, 1, &Filters::InferenceFilter::OakDUpdate, &filter);
+    // Create the filter
+    Filters::InferenceFilter filter(nh, filterParams, transModelParams, obsParams, oakdClutter);
+    //Filters::InferenceFilter filter(nh, filterParams, transModelParams, oakdModel, oakdClutter);
+
+    // Set up subscribers & callbacks
+    // TODO - make filter.subscribers_ member and push_back this sub
+    ros::Subscriber yoloSub = nh.subscribe(sensorParams.SensorTopics[0], 1, &Filters::InferenceFilter::OakDCallback, &filter);
 
     ros::spin();
     return 0;

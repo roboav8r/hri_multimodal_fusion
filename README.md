@@ -54,6 +54,19 @@ https://gtsam-jlblanco-docs.readthedocs.io/en/latest/Overview.html
 - Make motion models and sensor models static
 - Make transition model TransitionModels::parser function to go from params to variables
 
+Multi-Sensor
+- obs_models.hpp: 
+  - Make ObsModelParams::SensorMdl into vector of <SensorMdl>s
+  - push_back in extractsensorparams
+  - define sensor frames
+- Make callbacks for each sensor - put in Sensors namespace
+  - Figure out how to pass callback function reference with filter.update() reference
+- filters.hpp
+  - Make subs_ vector member variable 
+  - Define filter frame
+- inference_filter.cpp
+  - populate filter.subs with new sensors
+
 Visualization
 - Performance improvements with marker array message
 - Convert visualization from marker publisher to rviz plugin

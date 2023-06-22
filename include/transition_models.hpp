@@ -93,8 +93,6 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
     n.getParam(param_ns,paramMap);
     params.nModels = paramMap.size();
 
-
-
     // Assign spatial transition models and motion labels/keys
     for (auto it = paramMap.begin(); it != paramMap.end(); it++)
     {

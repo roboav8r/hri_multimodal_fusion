@@ -8,59 +8,120 @@
 
 namespace Sensors {
 
-struct SensorParams
+// Sensor types - for generating sensor observation model matrices
+enum SensorType
 {
-    std::string name;
-    std::string type;
-    std::string topic;
-    std::vector<double> variance;
-    double pDetect;
+    pos_3d
 };
 
-// TODO - remove SensorParams
 
-// TODO - make a generic sensor class
-
-// TODO - add p(Z|X) matrix for the sensor
-
-// TODO - ExtractSensorParams from .yaml
-
-class OakDSensor
+class SensorModel
 {
     public:
-    OakDSensor(gtsam::Vector3 noise_var) 
-        : oakDNoiseVar_(noise_var), oakDNoiseCov_(gtsam::noiseModel::Diagonal::Sigmas(noise_var))
-        {};
-    
+    SensorModel(){}; // Default constructor
+
     // Construct from yaml input
-    OakDSensor(std::vector<double> const sensor_var) 
+    SensorModel(SensorType type, std::vector<double> const sensor_var)
+    : type_(type)
     {
+        // Construct noise covariance
         for (int32_t ii =0; ii< sensor_var.size(); ++ii) {
-            oakDNoiseVar_(ii) = sensor_var[ii];
+            noiseVar_(ii) = sensor_var[ii];
         };
-        oakDNoiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(oakDNoiseVar_);
+        noiseCov_ = gtsam::noiseModel::Diagonal::Sigmas(noiseVar_);
+
+        // Construct obs matrix based on type
+        switch(this->type_)
+        {
+            case SensorType::pos_3d:
+                this->measModel_ = gtsam::Matrix::Zero(3,6);
+                gtsam::insertSub(this->measModel_, gtsam::Matrix::Identity(3,3),0,0); // upper left corner only is identity for constant position transition model
+                std::cout << "Got meas model" << std::endl;
+                std::cout << measModel_ << std::endl;
+                break;
+        }
+
     };
 
     // Accessors
     gtsam::Matrix MeasModel() {
-        return oakDMeasModel_;
+        return measModel_;
     }
 
     gtsam::Vector3 NoiseVar()
     {
-        return oakDNoiseVar_;
+        return noiseVar_;
     }
 
     gtsam::SharedDiagonal NoiseCov()
     {
-        return oakDNoiseCov_;
+        return noiseCov_;
     }
 
     private:
-    const gtsam::Matrix oakDMeasModel_ = (gtsam::Matrix(3,6)<< 1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0).finished();
-    gtsam::Vector3 oakDNoiseVar_;
-    gtsam::SharedDiagonal oakDNoiseCov_;
+    gtsam::Matrix measModel_;
+    gtsam::Vector3 noiseVar_;
+    gtsam::SharedDiagonal noiseCov_;
+    std::vector<std::string> measLabels_;
+    gtsam::Matrix labelMeasProb_; // TODO add likelihood matrix
+    SensorType type_;
 };
+
+
+// Structure containing all observation model data
+struct ObsModelParams
+{
+    size_t nSensors;
+    std::vector<std::string> SensorNames;
+    std::vector<std::string> SensorTopics;
+    SensorModel SensorMdl; // TODO - adapt this for multiple sensors 
+    std::vector<std::string> ClassLabels; // One per filter, should be same for all sensors
+};
+
+ObsModelParams ExtractSensorParams(std::string param_ns, ros::NodeHandle& n)
+{
+    ObsModelParams params;
+    std::string sensorName;
+
+    int typeIndex;
+    SensorType type;
+    std::string topic;
+    std::vector<double> sigma;
+
+    XmlRpc::XmlRpcValue sensorParamMap;
+    n.getParam(param_ns,sensorParamMap);
+    params.nSensors = sensorParamMap.size();
+
+
+    // Assign observation models to params structure
+    for (auto it = sensorParamMap.begin(); it != sensorParamMap.end(); it++)
+    {
+        sensorName = it->first;
+        params.SensorNames.push_back(sensorName);
+
+        // Get sensor type, topic, and variance
+        n.getParam(param_ns + "/" + sensorName + "/type",typeIndex);
+        n.getParam(param_ns + "/" + sensorName + "/topic",topic);
+        n.getParam(param_ns + "/" + sensorName + "/sigma",sigma);
+
+        type = static_cast<SensorType>(typeIndex);
+        params.SensorTopics.push_back(topic);
+
+        // TODO - generate measurement likelihood matrix, and add to SensorModel
+        // TODO - generate class list
+
+        // TODO - adapt this for multiple sensors
+        SensorModel sensor(type, sigma);
+        params.SensorMdl = sensor;
+
+    }
+
+    return params;
+};
+
+
+
+
 
 enum ClutterType
 {
