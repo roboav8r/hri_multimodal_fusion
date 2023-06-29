@@ -1,10 +1,8 @@
 #ifndef OBS_MODELS_H
 #define OBS_MODELS_H
 
-
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
-
 
 namespace Sensors {
 
@@ -14,15 +12,16 @@ enum SensorType
     pos_3d
 };
 
-
 class SensorModel
 {
     public:
     SensorModel(){}; // Default constructor
 
     // Construct from yaml input
-    SensorModel(SensorType type, std::vector<double> const sensor_var)
-    : type_(type)
+    SensorModel(SensorType type, std::vector<double> const sensor_var, 
+                std::vector<std::string> x_labels, std::vector<std::string> z_labels, 
+                gtsam::Matrix label_prob, std::map<int, int> label_map)
+    : type_(type), classLabels_(x_labels), measLabels_(z_labels), nX_(x_labels.size()), nZ_(z_labels.size()), labelProb_(labelProb_), labelMap_(label_map)
     {
         // Construct noise covariance
         for (int32_t ii =0; ii< sensor_var.size(); ++ii) {
@@ -44,27 +43,26 @@ class SensorModel
     };
 
     // Accessors
-    gtsam::Matrix MeasModel() {
-        return measModel_;
-    }
-
-    gtsam::Vector3 NoiseVar()
-    {
-        return noiseVar_;
-    }
-
-    gtsam::SharedDiagonal NoiseCov()
-    {
-        return noiseCov_;
-    }
+    gtsam::Matrix MeasModel() {return measModel_;}
+    gtsam::Vector3 NoiseVar(){return noiseVar_;}
+    gtsam::SharedDiagonal NoiseCov(){return noiseCov_;}
 
     private:
+    // Sensor info
+    SensorType type_;
+
+    // Spatial info
     gtsam::Matrix measModel_;
     gtsam::Vector3 noiseVar_;
     gtsam::SharedDiagonal noiseCov_;
+
+    // Semantic info
     std::vector<std::string> measLabels_;
-    gtsam::Matrix labelMeasProb_; // TODO add likelihood matrix
-    SensorType type_;
+    std::vector<std::string> classLabels_;
+    size_t nX_; // Number of class labels
+    size_t nZ_; // Number of measurement labels
+    gtsam::Matrix labelProb_; // nX by nZ matrix of label probabilities p(z_i|x_i)
+    std::map<int, int> labelMap_;
 };
 
 
@@ -87,8 +85,13 @@ ObsModelParams ExtractSensorParams(std::string param_ns, ros::NodeHandle& n)
     SensorType type;
     std::string topic;
     std::vector<double> sigma;
+    std::vector<std::string> xLabels;
+    std::vector<std::string> zLabels;
+    std::vector<double> labelProbRow;
+    gtsam::Matrix labelProb;
+    std::map<int, int> labelMap;
 
-    XmlRpc::XmlRpcValue sensorParamMap;
+    XmlRpc::XmlRpcValue sensorParamMap, xMap, zMap, probXml, labelXml;
     n.getParam(param_ns,sensorParamMap);
     params.nSensors = sensorParamMap.size();
 
@@ -107,21 +110,37 @@ ObsModelParams ExtractSensorParams(std::string param_ns, ros::NodeHandle& n)
         type = static_cast<SensorType>(typeIndex);
         params.SensorTopics.push_back(topic);
 
-        // TODO - generate measurement likelihood matrix, and add to SensorModel
-        // TODO - generate class list
+        // Generate class labels
+        n.getParam(param_ns + "/" + sensorName + "/class_labels",xMap);
+        for (int ii=0; ii<xMap.size(); ii++) {xLabels.push_back(xMap[ii]);}
+        
+        // Generate measurement labels
+        n.getParam(param_ns + "/" + sensorName + "/meas_labels",zMap);
+        for (int ii=0; ii<zMap.size(); ii++) {zLabels.push_back(zMap[ii]);}
+
+        // Generate measurement likelihood matrix, and add to SensorModel
+        labelProb = gtsam::Matrix::Zero(xMap.size(), zMap.size());
+        n.getParam(param_ns + "/" + sensorName + "/label_probability",probXml);
+        for (int ii=0; ii<probXml.size(); ii++)
+        { for (int jj=0; jj<probXml[ii].size(); jj++) {labelProb(ii,jj) = probXml[ii][jj];} } 
+
+        // Generate sensor -> user label map
+        n.getParam(param_ns + "/" + sensorName + "/label_map",labelXml);
+        // for (auto it = labelIntMap.cbegin(); it != labelIntMap.cend(); ++it)
+        // {
+        //     std::cout << it->first << std::endl;
+        //     std::cout << it->second << std::endl;
+        // }
 
         // TODO - adapt this for multiple sensors
-        SensorModel sensor(type, sigma);
+        SensorModel sensor(type, sigma, xLabels, zLabels, labelProb, labelMap);
         params.SensorMdl = sensor;
-
+        params.ClassLabels = xLabels; // TODO ensure these are all the same for all sensors
+        
     }
 
     return params;
 };
-
-
-
-
 
 enum ClutterType
 {

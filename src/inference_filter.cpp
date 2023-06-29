@@ -18,7 +18,7 @@
 // Constants
 static Filters::FilterParams filterParams;
 static TransitionModels::TransModelParams transModelParams;
-static Sensors::ObsModelParams sensorParams;
+static Sensors::ObsModelParams obsParams;
 
 //std::string yoloTopic;
 //std::vector<double> sensorVar;
@@ -47,9 +47,11 @@ int main(int argc, char **argv) {
     Filters::InferenceFilter filter(nh, filterParams, transModelParams, obsParams, oakdClutter);
     //Filters::InferenceFilter filter(nh, filterParams, transModelParams, oakdModel, oakdClutter);
 
+    // TODO generate callback functions with pointer to filter.update()
+
     // Set up subscribers & callbacks
-    // TODO - make filter.subscribers_ member and push_back this sub
-    ros::Subscriber yoloSub = nh.subscribe(sensorParams.SensorTopics[0], 1, &Filters::InferenceFilter::OakDCallback, &filter);
+    // TODO - make filter.subscribers_ member and push_back this sub; iterate through sensor params.Topics
+    ros::Subscriber yoloSub = nh.subscribe(obsParams.SensorTopics[0], 1, &Filters::InferenceFilter::OakDCallback, &filter);
 
     ros::spin();
     return 0;

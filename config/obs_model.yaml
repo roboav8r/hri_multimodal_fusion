@@ -6,12 +6,33 @@ sensors:
         p_d: 0.98
         q_d: 0.02
 
-        meas_labels: ["null", "person"] # The types of measurements you get from this sensor
+        class_labels: ["null", "person", "bottle"] # The classes of interest for the filter
+        meas_labels: ["null", "person", "bottle"] # The types of measurements you can get from this sensor
 
-        class_meas_probability: # The types of objects you want to track
-            # Measurement probabilities
-            null: [0.95, 0.05] # p(z=null|x=null), p(z=person|x=null) / true neg, false pos. Calibrate in empty room.
-            person: [0.1, 0.9] # p(z=null|x=person), p(z=person|x=person) / false neg, true pos. Calibrate with object in view. 
+        # Measurement probabilities
+        label_probability:
+            # Each row represents a class of interest (x_i)
+            # and each column entry represents the likelihood it will be labeled as z_i
+            - [0.98, 0.01, 0.01] # p(z=null|x=null), p(z=person|x=null), p(z=bottle|x=null) / true neg, false pos. Calibrate in empty room.
+            - [0.1, 0.9, 0.0] # p(z=null|x=person), p(z=person|x=person), p(z=bottle|x=person) / false neg, true pos. Calibrate with object in view. 
+            - [0.1, 0.0, 0.9] # p(z=null|x=bottle), p(z=person|x=bottle), p(z=bottle|x=bottle) / false neg, true pos. Calibrate with object in view.
+        
+        # Map user-defined meas_labels to sensor measurement label indices (the map below)
+        label_map: 
+            - "0": 1 # Person has index 0 in the sensor map, index 1 in meas_labels
+            - "39": 2 # Bottle has index 39 in the sensor map, index 1 in meas_labels
+
+
+# const std::vector<std::string> label_map = {
+#     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
+#     "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
+#     "sheep",         "cow",          "elephant",      "bear",          "zebra",       "giraffe",     "backpack",    "umbrella",     "handbag",
+#     "tie",           "suitcase",     "frisbee",       "skis",          "snowboard",   "sports ball", "kite",        "baseball bat", "baseball glove",
+#     "skateboard",    "surfboard",    "tennis racket", "bottle",        "wine glass",  "cup",         "fork",        "knife",        "spoon",
+#     "bowl",          "banana",       "apple",         "sandwich",      "orange",      "broccoli",    "carrot",      "hot dog",      "pizza",
+#     "donut",         "cake",         "chair",         "sofa",          "pottedplant", "bed",         "diningtable", "toilet",       "tvmonitor",
+#     "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
+#     "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
         
     # sick_lidar:
     #     type: "pos_2d"

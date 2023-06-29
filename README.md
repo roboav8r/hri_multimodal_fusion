@@ -71,3 +71,7 @@ Visualization
 - Performance improvements with marker array message
 - Convert visualization from marker publisher to rviz plugin
 - make topics parameters instead of fixed `/tracks`
+
+Error checking
+- Ensure obs_model.yaml has consistent number of classes, measurements, and measurement likelihood matrix
+- Ensure each sensor has the same number of class labels (meas labels can differ though). Can do this in obs_models.hpp ExtractSensorParams
