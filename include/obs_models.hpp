@@ -22,7 +22,7 @@ class SensorModel
     SensorModel(SensorType type, std::vector<double> const sensor_var, 
                 std::vector<std::string> x_labels, std::vector<std::string> z_labels, 
                 gtsam::Matrix label_prob, std::map<int, int> label_map)
-    : type_(type), classLabels_(x_labels), measLabels_(z_labels), nX_(x_labels.size()), nZ_(z_labels.size()), labelProb_(labelProb_), labelMap_(label_map)
+                : type_(type), classLabels_(x_labels), measLabels_(z_labels), nX_(x_labels.size()), nZ_(z_labels.size()), labelProb_(label_prob), labelMap_(label_map)
     {
         // Construct noise covariance
         for (int32_t ii =0; ii< sensor_var.size(); ++ii) {
@@ -123,7 +123,7 @@ ObsModelParams ExtractSensorParams(std::string param_ns, ros::NodeHandle& n)
         labelProb = gtsam::Matrix::Zero(xMap.size(), zMap.size());
         n.getParam(param_ns + "/" + sensorName + "/label_probability",probXml);
         for (int ii=0; ii<probXml.size(); ii++)
-        { for (int jj=0; jj<probXml[ii].size(); jj++) {labelProb(ii,jj) = probXml[ii][jj];} } 
+        { for (int jj=0; jj<probXml[ii].size(); jj++) {labelProb(ii,jj) = probXml[ii][jj];} }
 
         // Generate sensor -> user label map
         n.getParam(param_ns + "/" + sensorName + "/label_map",labelXml);
@@ -137,7 +137,7 @@ ObsModelParams ExtractSensorParams(std::string param_ns, ros::NodeHandle& n)
         SensorModel sensor(type, sigma, xLabels, zLabels, labelProb, labelMap);
         params.SensorMdl = sensor;
         params.ClassLabels = xLabels; // TODO ensure these are all the same for all sensors (xLabels are state variable)
-        
+
     }
 
     return params;

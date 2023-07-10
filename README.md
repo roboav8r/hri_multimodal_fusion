@@ -39,6 +39,9 @@ filepath: 'data/test'
 duration_sec: 10" 
 ```
 
+## Running inference on the OAKD camera
+roslaunch hri_multimodal_fusion oakd_filter.launch visualization:=true
+
 
 ### Converting rosbags to .csvs 
 ```
