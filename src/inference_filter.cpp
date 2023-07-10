@@ -19,6 +19,7 @@
 static Filters::FilterParams filterParams;
 static TransitionModels::TransModelParams transModelParams;
 static Sensors::ObsModelParams obsParams;
+static Sensors::Clutter3D oakdClutter;
 
 //std::string yoloTopic;
 //std::vector<double> sensorVar;
@@ -30,9 +31,11 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
 
     // Load filter parameters
+    std::cout << "Getting filter params" << std::endl;
     filterParams = Filters::ExtractFilterParams("filter/", nh);
 
     // Generate state transition models from parameter file
+    std::cout << "Getting transition model params" << std::endl;
     transModelParams = TransitionModels::ExtractTransModelParams("transition/", nh);
     //TransitionModels::PrintTransModelParams(transModelParams);
 
@@ -40,10 +43,13 @@ int main(int argc, char **argv) {
     // nh.getParam("/sensors/topic", yoloTopic);
     // nh.getParam("/sensors/sigma",sensorVar);
     // static Sensors::OakDSensor oakdModel(sensorVar);
-    static Sensors::ObsModelParams obsParams = Sensors::ExtractSensorParams("sensors/",nh);
-    static Sensors::Clutter3D oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
+    std::cout << "Getting obs model params" << std::endl;
+    obsParams = Sensors::ExtractSensorParams("sensors/",nh);
+    std::cout << "Getting clutter model params" << std::endl;
+    oakdClutter = Sensors::ExtractClutterParams("clutter/",nh);
 
     // Create the filter
+    std::cout << "Got params, making filter" << std::endl;
     Filters::InferenceFilter filter(nh, filterParams, transModelParams, obsParams, oakdClutter);
     //Filters::InferenceFilter filter(nh, filterParams, transModelParams, oakdModel, oakdClutter);
 
@@ -51,6 +57,7 @@ int main(int argc, char **argv) {
 
     // Set up subscribers & callbacks
     // TODO - make filter.subscribers_ member and push_back this sub; iterate through sensor params.Topics
+    std::cout << "Made filter, making sub" << std::endl;
     ros::Subscriber yoloSub = nh.subscribe(obsParams.SensorTopics[0], 1, &Filters::InferenceFilter::OakDCallback, &filter);
 
     ros::spin();

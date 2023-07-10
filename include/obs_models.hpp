@@ -1,6 +1,7 @@
 #ifndef OBS_MODELS_H
 #define OBS_MODELS_H
 
+#include <map>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/base/Vector.h>
 
@@ -126,16 +127,16 @@ ObsModelParams ExtractSensorParams(std::string param_ns, ros::NodeHandle& n)
 
         // Generate sensor -> user label map
         n.getParam(param_ns + "/" + sensorName + "/label_map",labelXml);
-        // for (auto it = labelIntMap.cbegin(); it != labelIntMap.cend(); ++it)
-        // {
-        //     std::cout << it->first << std::endl;
-        //     std::cout << it->second << std::endl;
-        // }
+        std::cout << labelXml.getType() << std::endl;
+        for (auto it = labelXml.begin(); it != labelXml.end(); ++it)
+        {
+            labelMap.insert({std::stoi(it->first),std::stoi(it->second)});            
+        }
 
-        // TODO - adapt this for multiple sensors
+        // TODO - adapt this for multiple sensor types
         SensorModel sensor(type, sigma, xLabels, zLabels, labelProb, labelMap);
         params.SensorMdl = sensor;
-        params.ClassLabels = xLabels; // TODO ensure these are all the same for all sensors
+        params.ClassLabels = xLabels; // TODO ensure these are all the same for all sensors (xLabels are state variable)
         
     }
 
@@ -151,6 +152,8 @@ class Clutter3D
 {
     public:
     // Constructors
+    Clutter3D() {};
+
     Clutter3D(ClutterType type, int n_objects, double x_min, double x_max, double y_min, double y_max, double z_min, double z_max)
         : nObs_(n_objects), xMin_(x_min), xMax_(x_max), yMin_(y_min), yMax_(y_max), zMin_(z_min), zMax_(z_max)
         {

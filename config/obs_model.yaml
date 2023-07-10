@@ -19,8 +19,9 @@ sensors:
         
         # Map user-defined meas_labels to sensor measurement label indices (the map below)
         label_map: 
-            - "0": 1 # Person has index 0 in the sensor map, index 1 in meas_labels
-            - "39": 2 # Bottle has index 39 in the sensor map, index 1 in meas_labels
+            "-1": "0" # -1 means that no class measurement was received, the null case (0)
+            "0": "1" # Person has index 0 in the sensor label map below, index 1 in meas_labels
+            "39": "2" # Bottle has index 39 in the sensor label map below, index 2 in meas_labels
 
 
 # const std::vector<std::string> label_map = {

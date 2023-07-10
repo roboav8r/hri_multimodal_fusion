@@ -90,7 +90,7 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
     std::vector<double> modeTrans;
 
     // Get number of motion models
-    n.getParam(param_ns,paramMap);
+    n.getParam(param_ns, paramMap);
     params.nModels = paramMap.size();
 
     // Assign spatial transition models and motion labels/keys
@@ -105,7 +105,6 @@ TransitionModels::TransModelParams TransitionModels::ExtractTransModelParams(std
         type = static_cast<TransitionModels::SpatialTransType>(typeIndex);
         TransitionModels::SpatialTransition trans(type, sigma);
         params.SpatialTrans.push_back(trans);
-
     }
 
     // Generate motion transition model
