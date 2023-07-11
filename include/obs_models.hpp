@@ -48,6 +48,11 @@ class SensorModel
     gtsam::Vector3 NoiseVar(){return noiseVar_;}
     gtsam::SharedDiagonal NoiseCov(){return noiseCov_;}
 
+    gtsam::Matrix LabelProb() {return labelProb_;}
+    std::map<int,int> LabelMap() {return labelMap_;}
+    std::vector<std::string> MeasLabels() {return measLabels_;}
+    std::vector<std::string> ClassLabels() {return classLabels_;}
+
     private:
     // Sensor info
     SensorType type_;

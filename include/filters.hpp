@@ -111,18 +111,18 @@ class InferenceFilter
         
     }
 
-    void Update()
+    void UpdateSpatial()
     {
         // Update spatial state for multiple models
         for (size_t ii=0; ii< this->transModelParams_.nModels; ++ii) 
         {
             // Compute Likelihood of this measurement with the predicted model
-            this->state_.Likelihood[ii] = Likelihood(this->meas_, this->obsModelParams_.SensorMdl.MeasModel(), this->state_.Spatial[ii]->mean(), this->obsModelParams_.SensorMdl.NoiseCov()->R());
+            this->state_.Likelihood[ii] = Likelihood(this->measPos_, this->obsModelParams_.SensorMdl.MeasModel(), this->state_.Spatial[ii]->mean(), this->obsModelParams_.SensorMdl.NoiseCov()->R());
 
             // Perform update step
             this->state_.Spatial[ii] = kfs_[ii].update(this->state_.Spatial[ii],
                                                        this->obsModelParams_.SensorMdl.MeasModel(), 
-                                                       this->meas_, 
+                                                       this->measPos_, 
                                                        this->obsModelParams_.SensorMdl.NoiseCov());
 
         };
@@ -133,10 +133,21 @@ class InferenceFilter
         this->state_.Motion /= this->state_.Motion.sum();
     }
 
+    void UpdateLabel()
+    {
+        // Compute posterior class label, using label prob column as a weight
+        for (size_t ii=0; ii< this->obsModelParams_.SensorMdl.ClassLabels().size(); ++ii) 
+        { 
+            this->state_.Class(ii,0) *= this->obsModelParams_.SensorMdl.LabelProb()(ii,this->obsModelParams_.SensorMdl.LabelMap()[this->measLabel_]);
+        }   
+
+        // Normalize posterior
+        this->state_.Class /= this->state_.Class.sum();
+      
+    }
+
     void OakDCallback(const depthai_ros_msgs::SpatialDetectionArray::ConstPtr& msg)
     {
-        ROS_INFO("Got detection msg");
-
         if (this->initialized_) {
 
             // Compute time since last estimate
@@ -152,18 +163,21 @@ class InferenceFilter
             // Do a prediction/propagation step
             Predict();
 
-            std::cout << "Predict done" << std::endl;
-
             // If measurement is available, do an update
             if (msg->detections.size() !=0) {
 
                 for (depthai_ros_msgs::SpatialDetection det : msg->detections) {
-                    this->meas_ = {det.position.x, det.position.y, det.position.z};
+                    this->measPos_ = {det.position.x, det.position.y, det.position.z};
+                    this->measLabel_ = det.results[0].id;
                 }
-                Update();
+                UpdateSpatial();
+                UpdateLabel();
+            
+            } else { // No measurement available - treat this as a missed/null detection
+                this->measLabel_ = -1;
             }
 
-            // Find maximum likelihood index
+            // Find maximum likelihood index for motion/activity estimation
             int8_t motionModelInd = 0;
             float motionConf = 0.0;
             for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
@@ -176,14 +190,12 @@ class InferenceFilter
             };
 
             // Publish/output current state
-            // state_.Spatial[motionModelInd]->print("State");
             FormatObjectMsg(state_.Spatial[motionModelInd], objectMsg_);
             objectMsg_.header.stamp = this->t_;
             objectMsg_.activity = this->transModelParams_.MotionLabels[motionModelInd];
             objectMsg_.activity_confidence = motionConf;
             trackPub_.publish(objectMsg_);
 
-            // std::cout << "Publishing done" << std::endl;
 
         } else {
             ROS_INFO("Filter NOT initialized");
@@ -194,11 +206,10 @@ class InferenceFilter
                 t_ = msg->header.stamp;
 
                 for (depthai_ros_msgs::SpatialDetection det : msg->detections) {
-                    this->meas_ = {det.position.x, det.position.y, det.position.z};
+                    this->measPos_ = {det.position.x, det.position.y, det.position.z};
                 }
                 
                 // Generate a KF object and a prior for each motion model
-                std::cout << "Initializing Kalman Filters" << std::endl;
                 for (size_t ii =0; ii< this->transModelParams_.nModels; ++ii) {
 
                     this->kfs_.push_back(gtsam::KalmanFilter(6, gtsam::KalmanFilter::Factorization::QR));
@@ -212,7 +223,7 @@ class InferenceFilter
 
                     
                     this->state_.Spatial[ii] = this->kfs_[ii].init(
-                        gtsam::Vector6(this->meas_(0),this->meas_(1),this->meas_(2),0,0,0), 
+                        gtsam::Vector6(this->measPos_(0),this->measPos_(1),this->measPos_(2),0,0,0), 
                         gtsam::noiseModel::Diagonal::Sigmas(variance));
                 };
                 this->initialized_ = true;
@@ -233,8 +244,8 @@ class InferenceFilter
 
     // measurement models
     Sensors::ObsModelParams obsModelParams_;
-    gtsam::Vector3 meas_;
-    int measClassIdx_; // The index of the measurement label - used to update object class estimate
+    gtsam::Vector3 measPos_;
+    int measLabel_; // The index of the measurement label - used to update object class estimate
     // Sensors::OakDSensor oakDSensor_ = Sensors::OakDSensor(gtsam::Vector3(34.0059364,25.9475303,54.9710593));
 
     // ROS/loop control member variables
