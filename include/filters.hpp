@@ -84,6 +84,12 @@ class InferenceFilter
                 objectMsg_.activity_labels.push_back(transModelParams_.MotionLabels[ii]);
             }
             objectMsg_.activity_confidences.resize(transModelParams_.nModels);
+
+            for (int ii=0; ii<obsModelParams_.ClassLabels.size(); ii++)
+            {
+                objectMsg_.class_labels.push_back(obsModelParams_.ClassLabels[ii]);
+            }
+            objectMsg_.class_confidences.resize(obsModelParams_.ClassLabels.size());
         };
 
     // Accessors
@@ -189,11 +195,25 @@ class InferenceFilter
                 }
             };
 
+            // Find maximum likelihood index for class estimation
+            int8_t classInd = 0;
+            float classConf = 0.0;
+            for (size_t ii =0; ii < this->obsModelParams_.ClassLabels.size() ; ++ii) {
+                objectMsg_.class_confidences[ii] = this->state_.Class(ii,0);
+                if (this->state_.Class(ii) > classConf)
+                {
+                    classConf = this->state_.Class(ii,0);
+                    classInd = ii;
+                }
+            };
+            
             // Publish/output current state
             FormatObjectMsg(state_.Spatial[motionModelInd], objectMsg_);
             objectMsg_.header.stamp = this->t_;
             objectMsg_.activity = this->transModelParams_.MotionLabels[motionModelInd];
             objectMsg_.activity_confidence = motionConf;
+            objectMsg_.class_label = this->obsModelParams_.ClassLabels[classInd];
+            objectMsg_.class_confidence = classConf;
             trackPub_.publish(objectMsg_);
 
 
