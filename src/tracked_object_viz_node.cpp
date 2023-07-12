@@ -90,7 +90,21 @@ class TrackedObjectVisualizer
         markerMsg_.pose.position.z = msg->pose.pose.position.z + labelOffset.z;
         markerMsg_.text = "Activity: " + msg->activity + " (" + std::to_string(msg->activity_confidence) + "%) ";
         markerArrayMsg_.markers.push_back(markerMsg_);
-        
+
+        // Class label
+        markerMsg_.id=3;
+        markerMsg_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        markerMsg_.action = visualization_msgs::Marker::ADD;
+        markerMsg_.scale.z = .2;
+        labelOffset.x = 0;
+        labelOffset.y = -1.0;
+        labelOffset.z = 0;
+        markerMsg_.pose.position.x = msg->pose.pose.position.x + labelOffset.x;
+        markerMsg_.pose.position.y = msg->pose.pose.position.y + labelOffset.y;
+        markerMsg_.pose.position.z = msg->pose.pose.position.z + labelOffset.z;
+        markerMsg_.text = "Class: " + msg->class_label + " (" + std::to_string(msg->class_confidence) + "%) ";
+        markerArrayMsg_.markers.push_back(markerMsg_);
+
         // Publish message
         vizPub_.publish(markerArrayMsg_);
     }
