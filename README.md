@@ -27,21 +27,25 @@ make # TODO - fails here
 
 # Usage
 
-## Calibration
-To calibrate the OAK-D sensor, send a command to run the bag and label service:
+## Launching the system with OAK-D camera
 ```
-rosservice call /bag_and_label_oakd_data "label_data:
+roslaunch hri_multimodal_fusion oakd_filter.launch training:=true # Just launch the node, which publishes object class and position
+roslaunch hri_multimodal_fusion oakd_filter.launch visualization:= true # Launch the node with RViz
+roslaunch hri_multimodal_fusion oakd_filter.launch visualization:= true training:=true # Launch the training node to record data
+```
+
+## Recording training data
+To calibrate the OAK-D sensor, send a command to run the bag and label service while the training node is running. For example:
+```
+rosservice call /bag_and_label_sensor_data "label_data:
   labels:
   - size: 1
     label: 'person'
-    activity: 'sitting'
-filepath: 'data/test'
-duration_sec: 10" 
+    activity: 'standing'
+    motiontype: 0
+filepath: 'data/person_standing_lab_3'
+duration_sec: 30"
 ```
-
-## Running inference on the OAKD camera
-roslaunch hri_multimodal_fusion oakd_filter.launch visualization:=true
-
 
 ### Converting rosbags to .csvs 
 ```
@@ -69,6 +73,8 @@ Multi-Sensor
   - Define filter frame
 - inference_filter.cpp
   - populate filter.subs with new sensors
+- train_node.cpp
+  - specify .bagfile topics based on sensor configuration file
 
 Visualization
 - Performance improvements with marker array message

@@ -2,7 +2,8 @@
 
     <arg name="visualization" default="false" />
     <arg name="config" default="oakd" />
-    <arg name="calib_mode" default="false" /> <!-- options: true to calibrate, false to run inference -->
+    <arg name="inference" default="true" /> <!-- true: run inference -->
+    <arg name="training" default="false" /> <!-- true: launch server node to record training data -->
 
     <!-- Config file paths -->
     <arg name="filter_param_path" default="config/filter_params.yaml" />
@@ -10,19 +11,22 @@
     <arg name="obs_model_path" default="config/obs_model.yaml" />
     <arg name="clutter_model_path" default="config/clutter_model.yaml" />
 
-    <!-- If running in inference mode, load parameters to parameter server -->
-    <group unless="$(arg calib_mode)" >
-        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg filter_param_path)" />
-        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg state_transition_path)" />
-        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg obs_model_path)" />
-        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg clutter_model_path)" />
-    </group>
-
     <!-- Launch sensors -->
     <include file="$(find depthai_examples)/launch/yolov4_publisher.launch" />
 
     <!-- Launch training or inference node, as appropriate -->
-    <node name="inference_filter" pkg="hri_multimodal_fusion" type="inference_filter" output="screen"/>
+    <!-- If running in inference mode, load parameters to parameter server -->
+    <group if="$(arg inference)" >
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg filter_param_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg state_transition_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg obs_model_path)" />
+        <rosparam command="load" file="$(find hri_multimodal_fusion)/$(arg clutter_model_path)" />
+        <node name="inference_filter" pkg="hri_multimodal_fusion" type="inference_filter" output="screen"/>
+    </group>
+
+    <group if="$(arg training)" >
+        <node name="perception_training_node" pkg="hri_multimodal_fusion" type="perception_training_node" output="screen"/>
+    </group>
 
     <!-- RViz visualization -->
     <node name="tracked_object_viz" pkg="hri_multimodal_fusion" type="tracked_object_viz_node" output="screen" if="$(arg visualization)"/>

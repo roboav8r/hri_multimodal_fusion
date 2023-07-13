@@ -115,6 +115,10 @@ add_executable(oakd_train_node src/oakd_train.cpp)
 target_link_libraries(oakd_train_node ${catkin_LIBRARIES})
 add_dependencies(oakd_train_node hri_multimodal_fusion_generate_messages_cpp)
 
+add_executable(perception_training_node src/train_node.cpp)
+target_link_libraries(perception_training_node ${catkin_LIBRARIES})
+add_dependencies(perception_training_node hri_multimodal_fusion_generate_messages_cpp)
+
 
 add_executable(tracked_object_viz_node src/tracked_object_viz_node.cpp)
 target_include_directories(tracked_object_viz_node
