@@ -14,8 +14,6 @@ class TrackedObjectVisualizer
 
     void Callback (const hri_multimodal_fusion::TrackedObject::ConstPtr& msg)
     {
-        ROS_INFO("Received message");
-
         // Initialize message
         markerArrayMsg_ = visualization_msgs::MarkerArray();
         markerMsg_ = visualization_msgs::Marker();
@@ -83,7 +81,7 @@ class TrackedObjectVisualizer
         markerMsg_.action = visualization_msgs::Marker::ADD;
         markerMsg_.scale.z = .2;
         labelOffset.x = 0;
-        labelOffset.y = -0.5;
+        labelOffset.y = -0.25;
         labelOffset.z = 0;
         markerMsg_.pose.position.x = msg->pose.pose.position.x + labelOffset.x;
         markerMsg_.pose.position.y = msg->pose.pose.position.y + labelOffset.y;
@@ -97,7 +95,7 @@ class TrackedObjectVisualizer
         markerMsg_.action = visualization_msgs::Marker::ADD;
         markerMsg_.scale.z = .2;
         labelOffset.x = 0;
-        labelOffset.y = -1.0;
+        labelOffset.y = -0.40;
         labelOffset.z = 0;
         markerMsg_.pose.position.x = msg->pose.pose.position.x + labelOffset.x;
         markerMsg_.pose.position.y = msg->pose.pose.position.y + labelOffset.y;
