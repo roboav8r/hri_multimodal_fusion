@@ -3,35 +3,6 @@ project(hri_multimodal_fusion)
 
 add_compile_options(-std=c++17)
 
-# # prevents a keyword clash between Qt and boost
-# add_definitions(-DQT_NO_KEYWORDS)
-
-# ## This setting causes Qt's "MOC" generation to happen automatically.
-# set(CMAKE_AUTOMOC ON)
-
-# find_package(Qt5 ${rviz_QT_VERSION} REQUIRED Core Widgets)
-# set(QT_LIBRARIES Qt5::Widgets)
-
-# include($ENV{ROS_ROOT}/core/rosbuild/FindPkgConfig.cmake)
-# pkg_check_modules(OGRE OGRE)
-# include_directories( ${OGRE_INCLUDE_DIRS} )
-# link_directories( ${OGRE_LIBRARY_DIRS} )
-
-# qt5_wrap_cpp(MOC_FILES
-#   src/tracked_object_display.h
-#   src/tracked_object_visual.h
-# )
-
-# set(SRC_FILES
-#   src/tracked_object_display.cpp
-#   src/tracked_object_visual.cpp
-#   ${MOC_FILES}
-# )
-
-# set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-# add_library(${PROJECT_NAME} ${SRC_FILES})
-
-
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS 
     roscpp 
@@ -71,7 +42,6 @@ add_service_files(
   FILES LabelBagData.srv
 )
 
-
 ## Generate added messages and services
 generate_messages(
     DEPENDENCIES
@@ -85,9 +55,6 @@ catkin_package(
     CATKIN_DEPENDS message_runtime
     DEPENDS GTSAM GTSAM_UNSTABLE
 )
-
-
-# target_link_libraries(${PROJECT_NAME} ${QT_LIBRARIES} ${catkin_LIBRARIES} ${OGRE_LIBRARIES})
 
 add_executable(cal_graph src/cal_graph.cpp)
 target_include_directories(cal_graph
@@ -158,16 +125,4 @@ target_include_directories(tracked_object_viz_node
     ${GTSAM_UNSTABLE_INCLUDE_DIRS}
 )
 target_link_libraries(tracked_object_viz_node ${catkin_LIBRARIES})
-# add_dependencies(tracked_object_visualization )
 
-
-# install(TARGETS
-#   ${PROJECT_NAME}
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
-# install(FILES
-#   plugin_description.xml
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
